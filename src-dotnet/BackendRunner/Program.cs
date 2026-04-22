@@ -21,6 +21,8 @@ var services = new ServiceCollection();
 services.AddDbContext<SchoolDbContext>(options => options.UseNpgsql(connectionString));
 
 using var serviceProvider = services.BuildServiceProvider();
-_ = serviceProvider.GetRequiredService<SchoolDbContext>();
+using var scope = serviceProvider.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<SchoolDbContext>();
+await SchoolDbInitializer.InitializeAsync(dbContext);
 
-Console.WriteLine("SchoolDbContext успешно настроен.");
+Console.WriteLine("База данных проверена, миграции применены, базовый сидинг выполнен.");
