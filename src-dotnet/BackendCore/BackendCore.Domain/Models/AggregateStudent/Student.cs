@@ -1,0 +1,61 @@
+using BackendCore.BackendCore.Domain.Models.Base;
+
+namespace BackendCore.BackendCore.Domain.Models.AggregateStudent;
+
+public class Student : Entity
+{
+    public string LastName { get; private set; }
+    public string FirstName { get; private set; }
+    public string MiddleName { get; private set; }
+    public DateOnly BirthDate { get; private set; }
+    public Guid StudentStatusId { get; private set; }
+
+    public Student(
+        string lastName,
+        string firstName,
+        string middleName,
+        DateOnly birthDate,
+        Guid studentStatusId
+    )
+    {
+        LastName = ValidateRequired(lastName, nameof(lastName));
+        FirstName = ValidateRequired(firstName, nameof(firstName));
+        MiddleName = ValidateRequired(middleName, nameof(middleName));
+
+        if (birthDate > DateOnly.FromDateTime(DateTime.UtcNow))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(birthDate),
+                "Дата рождения не может быть в будущем."
+            );
+        }
+
+        if (studentStatusId == Guid.Empty)
+        {
+            throw new ArgumentException("Статус ученика обязателен.", nameof(studentStatusId));
+        }
+
+        BirthDate = birthDate;
+        StudentStatusId = studentStatusId;
+    }
+
+    public void ChangeStatus(Guid studentStatusId)
+    {
+        if (studentStatusId == Guid.Empty)
+        {
+            throw new ArgumentException("Статус ученика обязателен.", nameof(studentStatusId));
+        }
+
+        StudentStatusId = studentStatusId;
+    }
+
+    private static string ValidateRequired(string value, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Поле обязательно для заполнения.", paramName);
+        }
+
+        return value.Trim();
+    }
+}
