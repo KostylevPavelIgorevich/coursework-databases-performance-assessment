@@ -4,31 +4,31 @@ namespace BackendCore.BackendCore.Domain.Models.AggregateStudent;
 
 public class Enrollment : Entity
 {
-    public Guid StudentId { get; private set; }
-    public Guid SchoolClassId { get; private set; }
-    public Guid AcademicYearId { get; private set; }
+    public int StudentId { get; private set; }
+    public int SchoolClassId { get; private set; }
+    public int AcademicYearId { get; private set; }
     public DateOnly StartDate { get; private set; }
     public DateOnly? EndDate { get; private set; }
 
     public Enrollment(
-        Guid studentId,
-        Guid schoolClassId,
-        Guid academicYearId,
+        int studentId,
+        int schoolClassId,
+        int academicYearId,
         DateOnly startDate,
         DateOnly? endDate = null
     )
     {
-        if (studentId == Guid.Empty)
+        if (studentId <= 0)
         {
             throw new ArgumentException("Ученик обязателен.", nameof(studentId));
         }
 
-        if (schoolClassId == Guid.Empty)
+        if (schoolClassId <= 0)
         {
             throw new ArgumentException("Класс обязателен.", nameof(schoolClassId));
         }
 
-        if (academicYearId == Guid.Empty)
+        if (academicYearId <= 0)
         {
             throw new ArgumentException("Учебный год обязателен.", nameof(academicYearId));
         }

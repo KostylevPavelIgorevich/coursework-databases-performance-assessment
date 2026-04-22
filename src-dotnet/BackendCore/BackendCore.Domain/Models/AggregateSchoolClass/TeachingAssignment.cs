@@ -4,34 +4,34 @@ namespace BackendCore.BackendCore.Domain.Models.AggregateSchoolClass;
 
 public class TeachingAssignment : Entity
 {
-    public Guid SchoolClassId { get; private set; }
-    public Guid TeacherId { get; private set; }
-    public Guid SubjectId { get; private set; }
-    public Guid AcademicYearId { get; private set; }
+    public int SchoolClassId { get; private set; }
+    public int TeacherId { get; private set; }
+    public int SubjectId { get; private set; }
+    public int AcademicYearId { get; private set; }
 
     public TeachingAssignment(
-        Guid schoolClassId,
-        Guid teacherId,
-        Guid subjectId,
-        Guid academicYearId
+        int schoolClassId,
+        int teacherId,
+        int subjectId,
+        int academicYearId
     )
     {
-        if (schoolClassId == Guid.Empty)
+        if (schoolClassId <= 0)
         {
             throw new ArgumentException("Класс обязателен.", nameof(schoolClassId));
         }
 
-        if (teacherId == Guid.Empty)
+        if (teacherId <= 0)
         {
             throw new ArgumentException("Учитель обязателен.", nameof(teacherId));
         }
 
-        if (subjectId == Guid.Empty)
+        if (subjectId <= 0)
         {
             throw new ArgumentException("Предмет обязателен.", nameof(subjectId));
         }
 
-        if (academicYearId == Guid.Empty)
+        if (academicYearId <= 0)
         {
             throw new ArgumentException("Учебный год обязателен.", nameof(academicYearId));
         }

@@ -4,15 +4,15 @@ namespace BackendCore.BackendCore.Domain.Models.Common;
 
 public class Period : Entity
 {
-    public Guid AcademicYearId { get; private set; }
+    public int AcademicYearId { get; private set; }
     public string Name { get; private set; }
     public int Order { get; private set; }
     public DateOnly StartDate { get; private set; }
     public DateOnly EndDate { get; private set; }
 
-    public Period(Guid academicYearId, string name, int order, DateOnly startDate, DateOnly endDate)
+    public Period(int academicYearId, string name, int order, DateOnly startDate, DateOnly endDate)
     {
-        if (academicYearId == Guid.Empty)
+        if (academicYearId <= 0)
         {
             throw new ArgumentException("Учебный год обязателен.", nameof(academicYearId));
         }

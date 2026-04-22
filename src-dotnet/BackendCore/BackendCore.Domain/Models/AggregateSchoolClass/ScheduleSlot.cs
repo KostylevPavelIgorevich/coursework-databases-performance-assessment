@@ -4,21 +4,21 @@ namespace BackendCore.BackendCore.Domain.Models.AggregateSchoolClass;
 
 public class ScheduleSlot : Entity
 {
-    public Guid SchoolClassId { get; private set; }
+    public int SchoolClassId { get; private set; }
     public DayOfWeek DayOfWeek { get; private set; }
     public int LessonNumber { get; private set; }
-    public Guid TeachingAssignmentId { get; private set; }
-    public Guid ClassroomId { get; private set; }
+    public int TeachingAssignmentId { get; private set; }
+    public int ClassroomId { get; private set; }
 
     public ScheduleSlot(
-        Guid schoolClassId,
+        int schoolClassId,
         DayOfWeek dayOfWeek,
         int lessonNumber,
-        Guid teachingAssignmentId,
-        Guid classroomId
+        int teachingAssignmentId,
+        int classroomId
     )
     {
-        if (schoolClassId == Guid.Empty)
+        if (schoolClassId <= 0)
         {
             throw new ArgumentException("Класс обязателен.", nameof(schoolClassId));
         }
@@ -39,7 +39,7 @@ public class ScheduleSlot : Entity
             );
         }
 
-        if (teachingAssignmentId == Guid.Empty)
+        if (teachingAssignmentId <= 0)
         {
             throw new ArgumentException(
                 "Назначение учителя обязательно.",
@@ -47,7 +47,7 @@ public class ScheduleSlot : Entity
             );
         }
 
-        if (classroomId == Guid.Empty)
+        if (classroomId <= 0)
         {
             throw new ArgumentException("Кабинет обязателен.", nameof(classroomId));
         }

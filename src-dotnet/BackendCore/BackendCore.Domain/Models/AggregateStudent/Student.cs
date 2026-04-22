@@ -8,14 +8,14 @@ public class Student : Entity
     public string FirstName { get; private set; }
     public string MiddleName { get; private set; }
     public DateOnly BirthDate { get; private set; }
-    public Guid StudentStatusId { get; private set; }
+    public int StudentStatusId { get; private set; }
 
     public Student(
         string lastName,
         string firstName,
         string middleName,
         DateOnly birthDate,
-        Guid studentStatusId
+        int studentStatusId
     )
     {
         LastName = ValidateRequired(lastName, nameof(lastName));
@@ -30,7 +30,7 @@ public class Student : Entity
             );
         }
 
-        if (studentStatusId == Guid.Empty)
+        if (studentStatusId <= 0)
         {
             throw new ArgumentException("Статус ученика обязателен.", nameof(studentStatusId));
         }
@@ -39,9 +39,9 @@ public class Student : Entity
         StudentStatusId = studentStatusId;
     }
 
-    public void ChangeStatus(Guid studentStatusId)
+    public void ChangeStatus(int studentStatusId)
     {
-        if (studentStatusId == Guid.Empty)
+        if (studentStatusId <= 0)
         {
             throw new ArgumentException("Статус ученика обязателен.", nameof(studentStatusId));
         }

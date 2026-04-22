@@ -4,13 +4,13 @@ namespace BackendCore.BackendCore.Domain.Models.AggregateLesson;
 
 public class Lesson : Entity
 {
-    public Guid ScheduleSlotId { get; private set; }
+    public int ScheduleSlotId { get; private set; }
     public DateOnly Date { get; private set; }
     public string Topic { get; private set; }
 
-    public Lesson(Guid scheduleSlotId, DateOnly date, string topic)
+    public Lesson(int scheduleSlotId, DateOnly date, string topic)
     {
-        if (scheduleSlotId == Guid.Empty)
+        if (scheduleSlotId <= 0)
         {
             throw new ArgumentException("Слот расписания обязателен.", nameof(scheduleSlotId));
         }
