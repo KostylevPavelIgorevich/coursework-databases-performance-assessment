@@ -9,12 +9,7 @@ public class TeachingAssignment : Entity
     public int SubjectId { get; private set; }
     public int AcademicYearId { get; private set; }
 
-    public TeachingAssignment(
-        int schoolClassId,
-        int teacherId,
-        int subjectId,
-        int academicYearId
-    )
+    public TeachingAssignment(int schoolClassId, int teacherId, int subjectId, int academicYearId)
     {
         if (schoolClassId <= 0)
         {
