@@ -20,6 +20,41 @@ public static class SchoolDbInitializer
             return;
         }
 
+        await SeedDefaultDataAsync(dbContext, cancellationToken);
+    }
+
+    public static async Task ResetToDefaultAsync(
+        SchoolDbContext dbContext,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await dbContext.Database.MigrateAsync(cancellationToken);
+
+        dbContext.Grades.RemoveRange(dbContext.Grades);
+        dbContext.Lessons.RemoveRange(dbContext.Lessons);
+        dbContext.ScheduleSlots.RemoveRange(dbContext.ScheduleSlots);
+        dbContext.TeachingAssignments.RemoveRange(dbContext.TeachingAssignments);
+        dbContext.Enrollments.RemoveRange(dbContext.Enrollments);
+        dbContext.Students.RemoveRange(dbContext.Students);
+        dbContext.SchoolClasses.RemoveRange(dbContext.SchoolClasses);
+        dbContext.GradeTypes.RemoveRange(dbContext.GradeTypes);
+        dbContext.StudentStatuses.RemoveRange(dbContext.StudentStatuses);
+        dbContext.Periods.RemoveRange(dbContext.Periods);
+        dbContext.Teachers.RemoveRange(dbContext.Teachers);
+        dbContext.Subjects.RemoveRange(dbContext.Subjects);
+        dbContext.Classrooms.RemoveRange(dbContext.Classrooms);
+        dbContext.AcademicYears.RemoveRange(dbContext.AcademicYears);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await SeedDefaultDataAsync(dbContext, cancellationToken);
+    }
+
+    private static async Task SeedDefaultDataAsync(
+        SchoolDbContext dbContext,
+        CancellationToken cancellationToken
+    )
+    {
+
         var year2023 = new AcademicYear(new DateOnly(2023, 9, 1), new DateOnly(2024, 5, 31), false);
         var year2024 = new AcademicYear(new DateOnly(2024, 9, 1), new DateOnly(2025, 5, 31), false);
         var year2025 = new AcademicYear(new DateOnly(2025, 9, 1), new DateOnly(2026, 5, 31), true);

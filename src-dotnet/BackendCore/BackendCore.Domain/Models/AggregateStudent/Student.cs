@@ -49,6 +49,23 @@ public class Student : Entity
         StudentStatusId = studentStatusId;
     }
 
+    public void UpdateProfile(string lastName, string firstName, string middleName, DateOnly birthDate)
+    {
+        LastName = ValidateRequired(lastName, nameof(lastName));
+        FirstName = ValidateRequired(firstName, nameof(firstName));
+        MiddleName = ValidateRequired(middleName, nameof(middleName));
+
+        if (birthDate > DateOnly.FromDateTime(DateTime.UtcNow))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(birthDate),
+                "Дата рождения не может быть в будущем."
+            );
+        }
+
+        BirthDate = birthDate;
+    }
+
     private static string ValidateRequired(string value, string paramName)
     {
         if (string.IsNullOrWhiteSpace(value))

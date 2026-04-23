@@ -15,6 +15,13 @@ public class Teacher : Entity
         MiddleName = ValidateRequired(middleName, nameof(middleName));
     }
 
+    public void Update(string lastName, string firstName, string middleName)
+    {
+        LastName = ValidateRequired(lastName, nameof(lastName));
+        FirstName = ValidateRequired(firstName, nameof(firstName));
+        MiddleName = ValidateRequired(middleName, nameof(middleName));
+    }
+
     private static string ValidateRequired(string value, string paramName)
     {
         if (string.IsNullOrWhiteSpace(value))

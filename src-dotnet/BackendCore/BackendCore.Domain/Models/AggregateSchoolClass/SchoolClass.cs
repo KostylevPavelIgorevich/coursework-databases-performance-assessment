@@ -32,4 +32,23 @@ public class SchoolClass : Entity
         Letter = letter.Trim().ToUpperInvariant();
         AcademicYearId = academicYearId;
     }
+
+    public void Update(int grade, string letter)
+    {
+        if (grade is < 1 or > 11)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(grade),
+                "Номер класса должен быть в диапазоне 1..11."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(letter))
+        {
+            throw new ArgumentException("Литера класса обязательна.", nameof(letter));
+        }
+
+        Grade = grade;
+        Letter = letter.Trim().ToUpperInvariant();
+    }
 }

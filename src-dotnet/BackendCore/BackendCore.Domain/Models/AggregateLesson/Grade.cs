@@ -54,4 +54,9 @@ public class Grade : Entity
 
         Value = value;
     }
+
+    public void ChangeComment(string? comment)
+    {
+        Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
+    }
 }

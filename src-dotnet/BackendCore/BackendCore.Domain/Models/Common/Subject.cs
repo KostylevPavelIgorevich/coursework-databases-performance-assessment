@@ -17,4 +17,15 @@ public class Subject : Entity
         Name = name.Trim();
         ShortName = string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
     }
+
+    public void Update(string name, string? shortName = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Название предмета обязательно.", nameof(name));
+        }
+
+        Name = name.Trim();
+        ShortName = string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
+    }
 }

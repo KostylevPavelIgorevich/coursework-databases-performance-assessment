@@ -58,4 +58,41 @@ public class ScheduleSlot : Entity
         TeachingAssignmentId = teachingAssignmentId;
         ClassroomId = classroomId;
     }
+
+    public void Update(DayOfWeek dayOfWeek, int lessonNumber, int teachingAssignmentId, int classroomId)
+    {
+        if (dayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(dayOfWeek),
+                "Школьное расписание поддерживает только будние дни."
+            );
+        }
+
+        if (lessonNumber is < 1 or > 10)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(lessonNumber),
+                "Номер урока должен быть в диапазоне 1..10."
+            );
+        }
+
+        if (teachingAssignmentId <= 0)
+        {
+            throw new ArgumentException(
+                "Назначение учителя обязательно.",
+                nameof(teachingAssignmentId)
+            );
+        }
+
+        if (classroomId <= 0)
+        {
+            throw new ArgumentException("Кабинет обязателен.", nameof(classroomId));
+        }
+
+        DayOfWeek = dayOfWeek;
+        LessonNumber = lessonNumber;
+        TeachingAssignmentId = teachingAssignmentId;
+        ClassroomId = classroomId;
+    }
 }
