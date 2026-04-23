@@ -11,7 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("SchoolDb");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("Строка подключения 'ConnectionStrings:SchoolDb' не задана.");
+    throw new InvalidOperationException(
+        "Строка подключения 'ConnectionStrings:SchoolDb' не задана."
+    );
 }
 
 builder.Services.AddApplication();
@@ -33,78 +35,112 @@ using (var scope = app.Services.CreateScope())
     await SchoolDbInitializer.InitializeAsync(dbContext);
 }
 
-app.MapGet("/api/data", async (SchoolDbContext db, CancellationToken ct) =>
-{
-    var classes = await db.SchoolClasses
-        .OrderBy(x => x.Grade)
-        .ThenBy(x => x.Letter)
-        .Select(x => new { x.Id, Title = x.Grade + x.Letter })
-        .ToListAsync(ct);
+app.MapGet(
+    "/api/data",
+    async (SchoolDbContext db, CancellationToken ct) =>
+    {
+        var classes = await db
+            .SchoolClasses.OrderBy(x => x.Grade)
+            .ThenBy(x => x.Letter)
+            .Select(x => new { x.Id, Title = x.Grade + x.Letter })
+            .ToListAsync(ct);
 
-    var subjects = await db.Subjects
-        .OrderBy(x => x.Name)
-        .Select(x => new { x.Id, x.Name })
-        .ToListAsync(ct);
+        var subjects = await db
+            .Subjects.OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name })
+            .ToListAsync(ct);
 
-    var teachers = await db.Teachers
-        .OrderBy(x => x.LastName)
-        .Select(x => new { x.Id, FullName = x.LastName + " " + x.FirstName + " " + x.MiddleName })
-        .ToListAsync(ct);
+        var teachers = await db
+            .Teachers.OrderBy(x => x.LastName)
+            .Select(x => new
+            {
+                x.Id,
+                FullName = x.LastName + " " + x.FirstName + " " + x.MiddleName,
+            })
+            .ToListAsync(ct);
 
-    var students = await db.Students
-        .OrderBy(x => x.LastName)
-        .Select(x => new
-        {
-            x.Id,
-            x.LastName,
-            x.FirstName,
-            x.MiddleName,
-            ClassId = db.Enrollments
-                .Where(e => e.StudentId == x.Id && e.EndDate == null)
-                .OrderByDescending(e => e.StartDate)
-                .Select(e => e.SchoolClassId)
-                .FirstOrDefault(),
-        })
-        .ToListAsync(ct);
+        var students = await db
+            .Students.OrderBy(x => x.LastName)
+            .Select(x => new
+            {
+                x.Id,
+                x.LastName,
+                x.FirstName,
+                x.MiddleName,
+                ClassId = db
+                    .Enrollments.Where(e => e.StudentId == x.Id && e.EndDate == null)
+                    .OrderByDescending(e => e.StartDate)
+                    .Select(e => e.SchoolClassId)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(ct);
 
-    var schedule = await db.ScheduleSlots
-        .OrderBy(x => x.DayOfWeek)
-        .ThenBy(x => x.LessonNumber)
-        .Select(x => new
-        {
-            x.Id,
-            x.SchoolClassId,
-            Day = x.DayOfWeek.ToString(),
-            x.LessonNumber,
-            SubjectId = db.TeachingAssignments.Where(t => t.Id == x.TeachingAssignmentId).Select(t => t.SubjectId).FirstOrDefault(),
-            TeacherId = db.TeachingAssignments.Where(t => t.Id == x.TeachingAssignmentId).Select(t => t.TeacherId).FirstOrDefault(),
-        })
-        .ToListAsync(ct);
+        var schedule = await db
+            .ScheduleSlots.OrderBy(x => x.DayOfWeek)
+            .ThenBy(x => x.LessonNumber)
+            .Select(x => new
+            {
+                x.Id,
+                x.SchoolClassId,
+                Day = x.DayOfWeek.ToString(),
+                x.LessonNumber,
+                SubjectId = db
+                    .TeachingAssignments.Where(t => t.Id == x.TeachingAssignmentId)
+                    .Select(t => t.SubjectId)
+                    .FirstOrDefault(),
+                TeacherId = db
+                    .TeachingAssignments.Where(t => t.Id == x.TeachingAssignmentId)
+                    .Select(t => t.TeacherId)
+                    .FirstOrDefault(),
+            })
+            .ToListAsync(ct);
 
-    var grades = await db.Grades
-        .OrderByDescending(x => x.Id)
-        .Select(x => new
-        {
-            x.Id,
-            x.StudentId,
-            SubjectId = db.Lessons
-                .Where(l => l.Id == x.LessonId)
-                .Join(db.ScheduleSlots, l => l.ScheduleSlotId, s => s.Id, (_, s) => s.TeachingAssignmentId)
-                .Join(db.TeachingAssignments, ta => ta, t => t.Id, (_, t) => t.SubjectId)
-                .FirstOrDefault(),
-            Date = db.Lessons.Where(l => l.Id == x.LessonId).Select(l => l.Date).FirstOrDefault(),
-            x.Value,
-        })
-        .ToListAsync(ct);
+        var grades = await db
+            .Grades.OrderByDescending(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                x.StudentId,
+                SubjectId = db
+                    .Lessons.Where(l => l.Id == x.LessonId)
+                    .Join(
+                        db.ScheduleSlots,
+                        l => l.ScheduleSlotId,
+                        s => s.Id,
+                        (_, s) => s.TeachingAssignmentId
+                    )
+                    .Join(db.TeachingAssignments, ta => ta, t => t.Id, (_, t) => t.SubjectId)
+                    .FirstOrDefault(),
+                Date = db
+                    .Lessons.Where(l => l.Id == x.LessonId)
+                    .Select(l => l.Date)
+                    .FirstOrDefault(),
+                x.Value,
+            })
+            .ToListAsync(ct);
 
-    return Results.Ok(new { classes, subjects, teachers, students, schedule, grades });
-});
+        return Results.Ok(
+            new
+            {
+                classes,
+                subjects,
+                teachers,
+                students,
+                schedule,
+                grades,
+            }
+        );
+    }
+);
 
-app.MapPost("/api/admin/reseed-default", async (SchoolDbContext db, CancellationToken ct) =>
-{
-    await SchoolDbInitializer.ResetToDefaultAsync(db, ct);
-    return Results.Ok(new { message = "Базовые данные восстановлены." });
-});
+app.MapPost(
+    "/api/admin/reseed-default",
+    async (SchoolDbContext db, CancellationToken ct) =>
+    {
+        await SchoolDbInitializer.ResetToDefaultAsync(db, ct);
+        return Results.Ok(new { message = "Базовые данные восстановлены." });
+    }
+);
 
 app.MapPost(
     "/api/students",
@@ -116,24 +152,44 @@ app.MapPost(
         CancellationToken ct
     ) =>
     {
+        var statusId = request.StudentStatusId;
+        var statusExists = await db.StudentStatuses.AnyAsync(x => x.Id == statusId, ct);
+        if (!statusExists)
+        {
+            statusId = await db
+                .StudentStatuses.Where(x => x.Name == "Активен")
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync(ct);
+            if (statusId <= 0)
+            {
+                statusId = await db.StudentStatuses.Select(x => x.Id).FirstOrDefaultAsync(ct);
+            }
+        }
+        if (statusId <= 0)
+        {
+            return Results.BadRequest(new { message = "Не найден статус ученика." });
+        }
+
         var createResult = await createStudent.ExecuteAsync(
             new CreateStudentCommand(
                 request.LastName,
                 request.FirstName,
                 request.MiddleName,
                 request.BirthDate,
-                request.StudentStatusId
+                statusId
             ),
             ct
         );
         if (!createResult.IsSuccess)
         {
-            return Results.BadRequest(new { message = createResult.Error ?? "Не удалось создать ученика." });
+            return Results.BadRequest(
+                new { message = createResult.Error ?? "Не удалось создать ученика." }
+            );
         }
         var studentId = createResult.Data;
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
 
@@ -153,7 +209,9 @@ app.MapPost(
         );
         if (!enrollResult.IsSuccess)
         {
-            return Results.BadRequest(new { message = enrollResult.Error ?? "Не удалось зачислить ученика." });
+            return Results.BadRequest(
+                new { message = enrollResult.Error ?? "Не удалось зачислить ученика." }
+            );
         }
 
         return Results.Ok(new { id = studentId });
@@ -194,14 +252,18 @@ app.MapPut(
 
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 2)
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         var trimmed = request.Title.Trim().ToUpperInvariant();
         var letter = trimmed[^1].ToString();
         if (!int.TryParse(trimmed[..^1], out var grade))
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         try
@@ -256,8 +318,8 @@ app.MapPost(
             return Results.BadRequest(new { message = "Некорректный день недели." });
         }
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (currentYear is null)
@@ -289,17 +351,18 @@ app.MapPost(
         var classroomId = await db.Classrooms.Select(x => x.Id).FirstOrDefaultAsync(ct);
         if (classroomId <= 0)
         {
-            return Results.BadRequest(new { message = "Не найден кабинет для назначения в расписание." });
+            return Results.BadRequest(
+                new { message = "Не найден кабинет для назначения в расписание." }
+            );
         }
 
-        var slot =
-            new BackendCore.BackendCore.Domain.Models.AggregateSchoolClass.ScheduleSlot(
-                request.ClassId,
-                dayOfWeek,
-                request.LessonNumber,
-                teachingAssignment.Id,
-                classroomId
-            );
+        var slot = new BackendCore.BackendCore.Domain.Models.AggregateSchoolClass.ScheduleSlot(
+            request.ClassId,
+            dayOfWeek,
+            request.LessonNumber,
+            teachingAssignment.Id,
+            classroomId
+        );
         await db.ScheduleSlots.AddAsync(slot, ct);
         await db.SaveChangesAsync(ct);
 
@@ -383,28 +446,40 @@ app.MapPost(
     "/api/grades",
     async (CreateGradeRequest request, SchoolDbContext db, CancellationToken ct) =>
     {
-        var enrollment = await db.Enrollments
-            .Where(x => x.StudentId == request.StudentId)
+        var enrollment = await db
+            .Enrollments.Where(x => x.StudentId == request.StudentId)
             .OrderByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (enrollment is null)
         {
-            return Results.BadRequest(new { message = "Не найден класс ученика для выставления оценки." });
+            return Results.BadRequest(
+                new { message = "Не найден класс ученика для выставления оценки." }
+            );
         }
 
-        var slotId = await db.ScheduleSlots
-            .Join(
+        var slotId = await db
+            .ScheduleSlots.Join(
                 db.TeachingAssignments,
                 slot => slot.TeachingAssignmentId,
                 ta => ta.Id,
-                (slot, ta) => new { slot.Id, slot.SchoolClassId, ta.SubjectId }
+                (slot, ta) =>
+                    new
+                    {
+                        slot.Id,
+                        slot.SchoolClassId,
+                        ta.SubjectId,
+                    }
             )
-            .Where(x => x.SchoolClassId == enrollment.SchoolClassId && x.SubjectId == request.SubjectId)
+            .Where(x =>
+                x.SchoolClassId == enrollment.SchoolClassId && x.SubjectId == request.SubjectId
+            )
             .Select(x => x.Id)
             .FirstOrDefaultAsync(ct);
         if (slotId <= 0)
         {
-            return Results.BadRequest(new { message = "Не найден слот расписания для выбранного предмета." });
+            return Results.BadRequest(
+                new { message = "Не найден слот расписания для выбранного предмета." }
+            );
         }
 
         var lesson = await db.Lessons.FirstOrDefaultAsync(
@@ -486,18 +561,22 @@ app.MapPost(
     {
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 2)
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         var trimmed = request.Title.Trim().ToUpperInvariant();
         var letter = trimmed[^1].ToString();
         if (!int.TryParse(trimmed[..^1], out var grade))
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (currentYear is null)
@@ -514,11 +593,12 @@ app.MapPost(
             return Results.BadRequest(new { message = "Такой класс уже существует." });
         }
 
-        var schoolClass = new BackendCore.BackendCore.Domain.Models.AggregateSchoolClass.SchoolClass(
-            grade,
-            letter,
-            currentYear.Id
-        );
+        var schoolClass =
+            new BackendCore.BackendCore.Domain.Models.AggregateSchoolClass.SchoolClass(
+                grade,
+                letter,
+                currentYear.Id
+            );
         await db.SchoolClasses.AddAsync(schoolClass, ct);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { id = schoolClass.Id });
@@ -534,15 +614,19 @@ app.MapDelete(
         {
             return Results.NotFound();
         }
-        var teachingAssignments = await db.TeachingAssignments
-            .Where(x => x.SchoolClassId == id)
+        var teachingAssignments = await db
+            .TeachingAssignments.Where(x => x.SchoolClassId == id)
             .ToListAsync(ct);
         var assignmentIds = teachingAssignments.Select(x => x.Id).ToList();
-        var scheduleSlots = await db.ScheduleSlots
-            .Where(x => x.SchoolClassId == id || assignmentIds.Contains(x.TeachingAssignmentId))
+        var scheduleSlots = await db
+            .ScheduleSlots.Where(x =>
+                x.SchoolClassId == id || assignmentIds.Contains(x.TeachingAssignmentId)
+            )
             .ToListAsync(ct);
         var slotIds = scheduleSlots.Select(x => x.Id).ToList();
-        var lessons = await db.Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId)).ToListAsync(ct);
+        var lessons = await db
+            .Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId))
+            .ToListAsync(ct);
         var lessonIds = lessons.Select(x => x.Id).ToList();
         var grades = await db.Grades.Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
         var enrollments = await db.Enrollments.Where(x => x.SchoolClassId == id).ToListAsync(ct);
@@ -573,8 +657,8 @@ app.MapPut(
             return Results.BadRequest(new { message = "Некорректный день недели." });
         }
 
-        var currentYearId = await db.SchoolClasses
-            .Where(x => x.Id == request.ClassId)
+        var currentYearId = await db
+            .SchoolClasses.Where(x => x.Id == request.ClassId)
             .Select(x => x.AcademicYearId)
             .FirstOrDefaultAsync(ct);
         if (currentYearId <= 0)
@@ -627,7 +711,10 @@ app.MapPost(
     "/api/subjects",
     async (CreateSubjectRequest request, SchoolDbContext db, CancellationToken ct) =>
     {
-        var subject = new BackendCore.BackendCore.Domain.Models.Common.Subject(request.Name, request.ShortName);
+        var subject = new BackendCore.BackendCore.Domain.Models.Common.Subject(
+            request.Name,
+            request.ShortName
+        );
         await db.Subjects.AddAsync(subject, ct);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { id = subject.Id });
@@ -643,13 +730,17 @@ app.MapDelete(
         {
             return Results.NotFound();
         }
-        var teachingAssignments = await db.TeachingAssignments.Where(x => x.SubjectId == id).ToListAsync(ct);
+        var teachingAssignments = await db
+            .TeachingAssignments.Where(x => x.SubjectId == id)
+            .ToListAsync(ct);
         var assignmentIds = teachingAssignments.Select(x => x.Id).ToList();
-        var scheduleSlots = await db.ScheduleSlots
-            .Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
+        var scheduleSlots = await db
+            .ScheduleSlots.Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
             .ToListAsync(ct);
         var slotIds = scheduleSlots.Select(x => x.Id).ToList();
-        var lessons = await db.Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId)).ToListAsync(ct);
+        var lessons = await db
+            .Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId))
+            .ToListAsync(ct);
         var lessonIds = lessons.Select(x => x.Id).ToList();
         var grades = await db.Grades.Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
 
@@ -687,13 +778,17 @@ app.MapDelete(
         {
             return Results.NotFound();
         }
-        var teachingAssignments = await db.TeachingAssignments.Where(x => x.TeacherId == id).ToListAsync(ct);
+        var teachingAssignments = await db
+            .TeachingAssignments.Where(x => x.TeacherId == id)
+            .ToListAsync(ct);
         var assignmentIds = teachingAssignments.Select(x => x.Id).ToList();
-        var scheduleSlots = await db.ScheduleSlots
-            .Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
+        var scheduleSlots = await db
+            .ScheduleSlots.Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
             .ToListAsync(ct);
         var slotIds = scheduleSlots.Select(x => x.Id).ToList();
-        var lessons = await db.Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId)).ToListAsync(ct);
+        var lessons = await db
+            .Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId))
+            .ToListAsync(ct);
         var lessonIds = lessons.Select(x => x.Id).ToList();
         var grades = await db.Grades.Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
 
@@ -719,12 +814,15 @@ public sealed record CreateStudentRequest(
 );
 
 public sealed record CreateClassRequest(string Title);
+
 public sealed record UpdateClassRequest(string Title);
 
 public sealed record CreateSubjectRequest(string Name, string? ShortName = null);
+
 public sealed record UpdateSubjectRequest(string Name, string? ShortName = null);
 
 public sealed record CreateTeacherRequest(string LastName, string FirstName, string MiddleName);
+
 public sealed record UpdateTeacherRequest(string LastName, string FirstName, string MiddleName);
 
 public sealed record CreateScheduleRequest(
@@ -734,6 +832,7 @@ public sealed record CreateScheduleRequest(
     int SubjectId,
     int TeacherId
 );
+
 public sealed record UpdateScheduleRequest(
     int ClassId,
     string Day,
