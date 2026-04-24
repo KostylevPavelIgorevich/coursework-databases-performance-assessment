@@ -25,8 +25,8 @@ public static class ScheduleEndpoints
             return Results.BadRequest(new { message = "Некорректный день недели." });
         }
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (currentYear is null)
@@ -46,7 +46,9 @@ public static class ScheduleEndpoints
         var classroomId = await db.Classrooms.Select(x => x.Id).FirstOrDefaultAsync(ct);
         if (classroomId <= 0)
         {
-            return Results.BadRequest(new { message = "Не найден кабинет для назначения в расписание." });
+            return Results.BadRequest(
+                new { message = "Не найден кабинет для назначения в расписание." }
+            );
         }
 
         var slot = new ScheduleSlot(
@@ -80,8 +82,8 @@ public static class ScheduleEndpoints
             return Results.BadRequest(new { message = "Некорректный день недели." });
         }
 
-        var currentYearId = await db.SchoolClasses
-            .Where(x => x.Id == request.ClassId)
+        var currentYearId = await db
+            .SchoolClasses.Where(x => x.Id == request.ClassId)
             .Select(x => x.AcademicYearId)
             .FirstOrDefaultAsync(ct);
         if (currentYearId <= 0)

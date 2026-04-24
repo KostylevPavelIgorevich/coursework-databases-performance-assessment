@@ -7,7 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("SchoolDb");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("Строка подключения 'ConnectionStrings:SchoolDb' не задана.");
+    throw new InvalidOperationException(
+        "Строка подключения 'ConnectionStrings:SchoolDb' не задана."
+    );
 }
 
 builder.Services.AddApplication();

@@ -29,8 +29,8 @@ public static class StudentEndpoints
         var statusExists = await db.StudentStatuses.AnyAsync(x => x.Id == statusId, ct);
         if (!statusExists)
         {
-            statusId = await db.StudentStatuses
-                .Where(x => x.Name == "Активен")
+            statusId = await db
+                .StudentStatuses.Where(x => x.Name == "Активен")
                 .Select(x => x.Id)
                 .FirstOrDefaultAsync(ct);
             if (statusId <= 0)
@@ -55,12 +55,14 @@ public static class StudentEndpoints
         );
         if (!createResult.IsSuccess)
         {
-            return Results.BadRequest(new { message = createResult.Error ?? "Не удалось создать ученика." });
+            return Results.BadRequest(
+                new { message = createResult.Error ?? "Не удалось создать ученика." }
+            );
         }
         var studentId = createResult.Data;
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
 
@@ -80,7 +82,9 @@ public static class StudentEndpoints
         );
         if (!enrollResult.IsSuccess)
         {
-            return Results.BadRequest(new { message = enrollResult.Error ?? "Не удалось зачислить ученика." });
+            return Results.BadRequest(
+                new { message = enrollResult.Error ?? "Не удалось зачислить ученика." }
+            );
         }
 
         return Results.Ok(new { id = studentId });

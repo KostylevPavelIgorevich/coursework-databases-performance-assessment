@@ -14,22 +14,30 @@ public static class ClassEndpoints
         app.MapDelete("/api/classes/{id:int}", Delete);
     }
 
-    private static async Task<IResult> Create(CreateClassRequest request, SchoolDbContext db, CancellationToken ct)
+    private static async Task<IResult> Create(
+        CreateClassRequest request,
+        SchoolDbContext db,
+        CancellationToken ct
+    )
     {
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 2)
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         var trimmed = request.Title.Trim().ToUpperInvariant();
         var letter = trimmed[^1].ToString();
         if (!int.TryParse(trimmed[..^1], out var grade))
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
-        var currentYear = await db.AcademicYears
-            .OrderByDescending(x => x.IsCurrent)
+        var currentYear = await db
+            .AcademicYears.OrderByDescending(x => x.IsCurrent)
             .ThenByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (currentYear is null)
@@ -67,14 +75,18 @@ public static class ClassEndpoints
 
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Length < 2)
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         var trimmed = request.Title.Trim().ToUpperInvariant();
         var letter = trimmed[^1].ToString();
         if (!int.TryParse(trimmed[..^1], out var grade))
         {
-            return Results.BadRequest(new { message = "Название класса должно быть в формате 8А." });
+            return Results.BadRequest(
+                new { message = "Название класса должно быть в формате 8А." }
+            );
         }
 
         try
@@ -97,15 +109,19 @@ public static class ClassEndpoints
         {
             return Results.NotFound();
         }
-        var teachingAssignments = await db.TeachingAssignments
-            .Where(x => x.SchoolClassId == id)
+        var teachingAssignments = await db
+            .TeachingAssignments.Where(x => x.SchoolClassId == id)
             .ToListAsync(ct);
         var assignmentIds = teachingAssignments.Select(x => x.Id).ToList();
-        var scheduleSlots = await db.ScheduleSlots
-            .Where(x => x.SchoolClassId == id || assignmentIds.Contains(x.TeachingAssignmentId))
+        var scheduleSlots = await db
+            .ScheduleSlots.Where(x =>
+                x.SchoolClassId == id || assignmentIds.Contains(x.TeachingAssignmentId)
+            )
             .ToListAsync(ct);
         var slotIds = scheduleSlots.Select(x => x.Id).ToList();
-        var lessons = await db.Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId)).ToListAsync(ct);
+        var lessons = await db
+            .Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId))
+            .ToListAsync(ct);
         var lessonIds = lessons.Select(x => x.Id).ToList();
         var grades = await db.Grades.Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
         var enrollments = await db.Enrollments.Where(x => x.SchoolClassId == id).ToListAsync(ct);

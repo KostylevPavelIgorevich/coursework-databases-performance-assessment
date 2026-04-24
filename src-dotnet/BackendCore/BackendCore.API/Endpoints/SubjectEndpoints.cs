@@ -59,13 +59,17 @@ public static class SubjectEndpoints
         {
             return Results.NotFound();
         }
-        var teachingAssignments = await db.TeachingAssignments.Where(x => x.SubjectId == id).ToListAsync(ct);
+        var teachingAssignments = await db
+            .TeachingAssignments.Where(x => x.SubjectId == id)
+            .ToListAsync(ct);
         var assignmentIds = teachingAssignments.Select(x => x.Id).ToList();
-        var scheduleSlots = await db.ScheduleSlots
-            .Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
+        var scheduleSlots = await db
+            .ScheduleSlots.Where(x => assignmentIds.Contains(x.TeachingAssignmentId))
             .ToListAsync(ct);
         var slotIds = scheduleSlots.Select(x => x.Id).ToList();
-        var lessons = await db.Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId)).ToListAsync(ct);
+        var lessons = await db
+            .Lessons.Where(x => slotIds.Contains(x.ScheduleSlotId))
+            .ToListAsync(ct);
         var lessonIds = lessons.Select(x => x.Id).ToList();
         var grades = await db.Grades.Where(x => lessonIds.Contains(x.LessonId)).ToListAsync(ct);
 

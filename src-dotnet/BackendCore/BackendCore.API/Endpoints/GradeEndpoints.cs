@@ -20,28 +20,40 @@ public static class GradeEndpoints
         CancellationToken ct
     )
     {
-        var enrollment = await db.Enrollments
-            .Where(x => x.StudentId == request.StudentId)
+        var enrollment = await db
+            .Enrollments.Where(x => x.StudentId == request.StudentId)
             .OrderByDescending(x => x.StartDate)
             .FirstOrDefaultAsync(ct);
         if (enrollment is null)
         {
-            return Results.BadRequest(new { message = "Не найден класс ученика для выставления оценки." });
+            return Results.BadRequest(
+                new { message = "Не найден класс ученика для выставления оценки." }
+            );
         }
 
-        var slotId = await db.ScheduleSlots
-            .Join(
+        var slotId = await db
+            .ScheduleSlots.Join(
                 db.TeachingAssignments,
                 slot => slot.TeachingAssignmentId,
                 ta => ta.Id,
-                (slot, ta) => new { slot.Id, slot.SchoolClassId, ta.SubjectId }
+                (slot, ta) =>
+                    new
+                    {
+                        slot.Id,
+                        slot.SchoolClassId,
+                        ta.SubjectId,
+                    }
             )
-            .Where(x => x.SchoolClassId == enrollment.SchoolClassId && x.SubjectId == request.SubjectId)
+            .Where(x =>
+                x.SchoolClassId == enrollment.SchoolClassId && x.SubjectId == request.SubjectId
+            )
             .Select(x => x.Id)
             .FirstOrDefaultAsync(ct);
         if (slotId <= 0)
         {
-            return Results.BadRequest(new { message = "Не найден слот расписания для выбранного предмета." });
+            return Results.BadRequest(
+                new { message = "Не найден слот расписания для выбранного предмета." }
+            );
         }
 
         var lesson = await db.Lessons.FirstOrDefaultAsync(
