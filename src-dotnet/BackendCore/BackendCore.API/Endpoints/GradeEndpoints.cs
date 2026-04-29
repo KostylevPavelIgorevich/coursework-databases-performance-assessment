@@ -1,5 +1,6 @@
 using BackendCore.BackendCore.API.Contracts;
 using BackendCore.BackendCore.Domain.Models.AggregateLesson;
+using BackendCore.BackendCore.Domain.Models.AggregateSchoolClass;
 using BackendCore.BackendCore.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,29 +32,15 @@ public static class GradeEndpoints
             );
         }
 
-        var slotId = await db
-            .ScheduleSlots.Join(
-                db.TeachingAssignments,
-                slot => slot.TeachingAssignmentId,
-                ta => ta.Id,
-                (slot, ta) =>
-                    new
-                    {
-                        slot.Id,
-                        slot.SchoolClassId,
-                        ta.SubjectId,
-                    }
-            )
-            .Where(x =>
-                x.SchoolClassId == enrollment.SchoolClassId && x.SubjectId == request.SubjectId
-            )
-            .Select(x => x.Id)
-            .FirstOrDefaultAsync(ct);
+        var slotId = await EnsureScheduleSlotAsync(
+            db,
+            enrollment.SchoolClassId,
+            request.SubjectId,
+            ct
+        );
         if (slotId <= 0)
         {
-            return Results.BadRequest(
-                new { message = "Не найден слот расписания для выбранного предмета." }
-            );
+            return Results.BadRequest(new { message = "Не удалось подготовить расписание для оценки." });
         }
 
         var lesson = await db.Lessons.FirstOrDefaultAsync(
@@ -77,6 +64,94 @@ public static class GradeEndpoints
         await db.Grades.AddAsync(grade, ct);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { id = grade.Id });
+    }
+
+    private static async Task<int> EnsureScheduleSlotAsync(
+        SchoolDbContext db,
+        int classId,
+        int subjectId,
+        CancellationToken ct
+    )
+    {
+        var existingSlotId = await db
+            .ScheduleSlots.Join(
+                db.TeachingAssignments,
+                slot => slot.TeachingAssignmentId,
+                ta => ta.Id,
+                (slot, ta) => new { slot.Id, slot.SchoolClassId, ta.SubjectId }
+            )
+            .Where(x => x.SchoolClassId == classId && x.SubjectId == subjectId)
+            .Select(x => x.Id)
+            .FirstOrDefaultAsync(ct);
+        if (existingSlotId > 0)
+        {
+            return existingSlotId;
+        }
+
+        var academicYearId = await db
+            .SchoolClasses.Where(x => x.Id == classId)
+            .Select(x => x.AcademicYearId)
+            .FirstOrDefaultAsync(ct);
+        if (academicYearId <= 0)
+        {
+            return 0;
+        }
+
+        var teachingAssignment = await db.TeachingAssignments.FirstOrDefaultAsync(
+            x =>
+                x.SchoolClassId == classId
+                && x.SubjectId == subjectId
+                && x.AcademicYearId == academicYearId,
+            ct
+        );
+
+        if (teachingAssignment is null)
+        {
+            var teacherId = await db.Teachers.Select(x => x.Id).FirstOrDefaultAsync(ct);
+            if (teacherId <= 0)
+            {
+                return 0;
+            }
+
+            teachingAssignment = new TeachingAssignment(classId, teacherId, subjectId, academicYearId);
+            await db.TeachingAssignments.AddAsync(teachingAssignment, ct);
+            await db.SaveChangesAsync(ct);
+        }
+
+        var classroomId = await db.Classrooms.Select(x => x.Id).FirstOrDefaultAsync(ct);
+        if (classroomId <= 0)
+        {
+            return 0;
+        }
+
+        var occupied = await db
+            .ScheduleSlots.Where(x => x.SchoolClassId == classId)
+            .Select(x => new { x.DayOfWeek, x.LessonNumber })
+            .ToListAsync(ct);
+
+        for (var day = DayOfWeek.Monday; day <= DayOfWeek.Friday; day++)
+        {
+            for (var lessonNumber = 1; lessonNumber <= 10; lessonNumber++)
+            {
+                if (occupied.Any(x => x.DayOfWeek == day && x.LessonNumber == lessonNumber))
+                {
+                    continue;
+                }
+
+                var slot = new ScheduleSlot(
+                    classId,
+                    day,
+                    lessonNumber,
+                    teachingAssignment.Id,
+                    classroomId
+                );
+                await db.ScheduleSlots.AddAsync(slot, ct);
+                await db.SaveChangesAsync(ct);
+                return slot.Id;
+            }
+        }
+
+        return 0;
     }
 
     private static async Task<IResult> Update(
