@@ -28,8 +28,15 @@ type Grade = {
   value: number;
 };
 
-type WindowKey = "students" | "classes" | "subjects" | "teachers" | "schedule" | "grades";
-type PageKey = "journal" | "directories";
+type WindowKey =
+  | "students"
+  | "classes"
+  | "subjects"
+  | "teachers"
+  | "schedule"
+  | "grades"
+  | "sqlconsole";
+type PageKey = "journal" | "directories" | "sql";
 
 const WINDOW_TITLES: Record<WindowKey, string> = {
   students: "Ученики",
@@ -38,6 +45,7 @@ const WINDOW_TITLES: Record<WindowKey, string> = {
   teachers: "Учителя",
   schedule: "Расписание",
   grades: "Оценки",
+  sqlconsole: "SQL консоль",
 };
 
 function inputWithSuggestions(
@@ -126,12 +134,19 @@ function App() {
   const [activePage, setActivePage] = useState<PageKey>("journal");
 
   const [openWindows, setOpenWindows] = useState<WindowKey[]>(["students", "schedule"]);
+  useEffect(() => {
+    if (activePage === "sql") {
+      setOpenWindows((prev) => (prev.includes("sqlconsole") ? prev : [...prev, "sqlconsole"]));
+    }
+  }, [activePage]);
   const [studentSearch, setStudentSearch] = useState("");
   const [classSearch, setClassSearch] = useState("");
   const [subjectSearch, setSubjectSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [scheduleSearch, setScheduleSearch] = useState("");
   const [gradesSearch, setGradesSearch] = useState("");
+  const [sqlQuery, setSqlQuery] = useState("SELECT * FROM students");
+  const [sqlResultText, setSqlResultText] = useState<string>("");
   const [studentSort, setStudentSort] = useState<"Фамилия" | "Класс">("Фамилия");
 
   const [studentsIndex, setStudentsIndex] = useState(0);
@@ -148,6 +163,30 @@ function App() {
     return s ? `${s.lastName} ${s.firstName} ${s.middleName}` : "—";
   };
   const teacherNameById = (id: number) => teachers.find((x) => x.id === id)?.fullName ?? "—";
+  const dayToUi: Record<string, string> = {
+    Monday: "Понедельник",
+    Tuesday: "Вторник",
+    Wednesday: "Среда",
+    Thursday: "Четверг",
+    Friday: "Пятница",
+    Понедельник: "Понедельник",
+    Вторник: "Вторник",
+    Среда: "Среда",
+    Четверг: "Четверг",
+    Пятница: "Пятница",
+  };
+  const dayToApi: Record<string, string> = {
+    Понедельник: "Monday",
+    Вторник: "Tuesday",
+    Среда: "Wednesday",
+    Четверг: "Thursday",
+    Пятница: "Friday",
+    Monday: "Monday",
+    Tuesday: "Tuesday",
+    Wednesday: "Wednesday",
+    Thursday: "Thursday",
+    Friday: "Friday",
+  };
 
   const sortedAndFilteredStudents = useMemo(() => {
     const search = studentSearch.trim().toLowerCase();
@@ -168,6 +207,17 @@ function App() {
     if (!val) return null;
     return sortedAndFilteredStudents.find((s) => s.lastName.toLowerCase().startsWith(val))?.id ?? null;
   }, [studentSearch, sortedAndFilteredStudents]);
+
+  const locatorStudentIndex = useMemo(() => {
+    if (locatorStudentId === null) return null;
+    const idx = sortedAndFilteredStudents.findIndex((s) => s.id === locatorStudentId);
+    return idx >= 0 ? idx : null;
+  }, [locatorStudentId, sortedAndFilteredStudents]);
+
+  useEffect(() => {
+    if (locatorStudentIndex === null) return;
+    setStudentsIndex(locatorStudentIndex);
+  }, [locatorStudentIndex]);
 
   const averageGradeBySubject = useMemo(() => {
     const acc = new Map<number, { sum: number; count: number }>();
@@ -232,6 +282,87 @@ function App() {
         .includes(q),
     );
   }, [grades, gradesSearch, students, subjects]);
+
+  const locatorClassIndex = useMemo(() => {
+    const q = classSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredClasses.findIndex((c) => c.title.toLowerCase().startsWith(q));
+    return idx >= 0 ? idx : null;
+  }, [classSearch, filteredClasses]);
+
+  useEffect(() => {
+    if (locatorClassIndex === null) return;
+    setClassesIndex(locatorClassIndex);
+  }, [locatorClassIndex]);
+
+  const locatorSubjectIndex = useMemo(() => {
+    const q = subjectSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredSubjects.findIndex((s) => s.name.toLowerCase().startsWith(q));
+    return idx >= 0 ? idx : null;
+  }, [subjectSearch, filteredSubjects]);
+
+  useEffect(() => {
+    if (locatorSubjectIndex === null) return;
+    setSubjectsIndex(locatorSubjectIndex);
+  }, [locatorSubjectIndex]);
+
+  const locatorTeacherIndex = useMemo(() => {
+    const q = teacherSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredTeachers.findIndex((t) => t.fullName.toLowerCase().startsWith(q));
+    return idx >= 0 ? idx : null;
+  }, [teacherSearch, filteredTeachers]);
+
+  useEffect(() => {
+    if (locatorTeacherIndex === null) return;
+    setTeachersIndex(locatorTeacherIndex);
+  }, [locatorTeacherIndex]);
+
+  const locatorScheduleIndex = useMemo(() => {
+    const q = scheduleSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredSchedule.findIndex((s) => {
+      const text = [
+        classNameById(s.classId),
+        dayToUi[s.day] ?? s.day,
+        String(s.lessonNumber),
+        subjectNameById(s.subjectId),
+        teacherNameById(s.teacherId),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return text.startsWith(q);
+    });
+    return idx >= 0 ? idx : null;
+  }, [scheduleSearch, filteredSchedule, classes, subjects, teachers, dayToUi]);
+
+  useEffect(() => {
+    if (locatorScheduleIndex === null) return;
+    setScheduleIndex(locatorScheduleIndex);
+  }, [locatorScheduleIndex]);
+
+  const locatorGradeIndex = useMemo(() => {
+    const q = gradesSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredGrades.findIndex((g) => {
+      const text = [
+        studentNameById(g.studentId),
+        subjectNameById(g.subjectId),
+        g.date,
+        String(g.value),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return text.startsWith(q);
+    });
+    return idx >= 0 ? idx : null;
+  }, [gradesSearch, filteredGrades, students, subjects]);
+
+  useEffect(() => {
+    if (locatorGradeIndex === null) return;
+    setGradesIndex(locatorGradeIndex);
+  }, [locatorGradeIndex]);
 
   const toggleWindow = (key: WindowKey) => {
     setOpenWindows((prev) =>
@@ -310,36 +441,54 @@ function App() {
     setStatusMessage("Экспорт в Excel выполнен.");
   }
 
+  async function executeSql() {
+    const sql = sqlQuery.trim();
+    if (!sql) {
+      setStatusMessage("Введите SQL-запрос.");
+      return;
+    }
+
+    try {
+      setStatusMessage("Выполняю SQL...");
+      const response = await fetch(`${apiBase}/api/admin/sql/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sql }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        const msg = err?.message ?? "SQL выполнение не удалось.";
+        setSqlResultText(JSON.stringify({ error: msg }, null, 2));
+        setStatusMessage(msg);
+        return;
+      }
+
+      const result = await response.json();
+      setSqlResultText(JSON.stringify(result, null, 2));
+      setStatusMessage("SQL выполнен.");
+
+      // После INSERT/UPDATE/DELETE обновляем таблицы.
+      const firstWord = sql.split(/\s+/)[0].toUpperCase();
+      if (firstWord === "INSERT" || firstWord === "UPDATE" || firstWord === "DELETE") {
+        await loadData();
+      }
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : "Ошибка выполнения SQL.";
+      setSqlResultText(JSON.stringify({ error: msg }, null, 2));
+      setStatusMessage(msg);
+    }
+  }
+
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5050";
   const pageWindows: Record<PageKey, WindowKey[]> = {
     journal: ["students", "schedule", "grades"],
     directories: ["classes", "subjects", "teachers"],
+    sql: ["sqlconsole"],
   };
-  const dayToUi: Record<string, string> = {
-    Monday: "Понедельник",
-    Tuesday: "Вторник",
-    Wednesday: "Среда",
-    Thursday: "Четверг",
-    Friday: "Пятница",
-    Понедельник: "Понедельник",
-    Вторник: "Вторник",
-    Среда: "Среда",
-    Четверг: "Четверг",
-    Пятница: "Пятница",
-  };
-  const dayToApi: Record<string, string> = {
-    Понедельник: "Monday",
-    Вторник: "Tuesday",
-    Среда: "Wednesday",
-    Четверг: "Thursday",
-    Пятница: "Friday",
-    Monday: "Monday",
-    Tuesday: "Tuesday",
-    Wednesday: "Wednesday",
-    Thursday: "Thursday",
-    Friday: "Friday",
-  };
-
   async function loadData() {
     try {
       const response = await fetch(`${apiBase}/api/data`);
@@ -963,6 +1112,12 @@ function App() {
         >
           Форма 2: Справочники
         </button>
+        <button
+          className={activePage === "sql" ? "active" : ""}
+          onClick={() => setActivePage("sql")}
+        >
+          Форма 3: SQL консоль
+        </button>
       </section>
 
       <section className="window-switcher">
@@ -1127,6 +1282,34 @@ function App() {
             onEdit={editSelectedTeacher}
             onDelete={deleteSelectedTeacher}
           />
+        )}
+
+        {activePage === "sql" && openWindows.includes("sqlconsole") && (
+          <article className="window">
+            <h2>SQL консоль</h2>
+            <div className="sql-console">
+              <textarea
+                value={sqlQuery}
+                onChange={(e) => setSqlQuery(e.currentTarget.value)}
+                className="sql-textarea"
+              />
+              <div className="sql-actions">
+                <button onClick={executeSql}>Выполнить SQL</button>
+                <button
+                  onClick={() => {
+                    setSqlResultText("");
+                    setStatusMessage("");
+                  }}
+                >
+                  Очистить вывод
+                </button>
+              </div>
+              <div className="sql-result">
+                <h3>Результат (JSON)</h3>
+                <pre className="sql-pre">{sqlResultText || "—"}</pre>
+              </div>
+            </div>
+          </article>
         )}
 
         {activePage === "journal" && openWindows.includes("schedule") && (

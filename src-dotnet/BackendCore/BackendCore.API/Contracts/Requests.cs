@@ -43,3 +43,5 @@ public sealed record UpdateScheduleRequest(
 
 public sealed record CreateGradeRequest(int StudentId, int SubjectId, DateOnly Date, int Value);
 public sealed record UpdateGradeRequest(int Value, string? Comment = null);
+
+public sealed record ExecuteSqlRequest(string Sql);

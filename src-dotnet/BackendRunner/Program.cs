@@ -46,4 +46,19 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapSchoolApi();
-app.Run("http://localhost:5050");
+try
+{
+    app.Run("http://localhost:5050");
+}
+catch (IOException ex)
+    when (ex.Message.Contains("address already in use", StringComparison.OrdinalIgnoreCase)
+        || ex.InnerException?.Message.Contains(
+            "address already in use",
+            StringComparison.OrdinalIgnoreCase
+        ) == true
+    )
+{
+    Console.WriteLine(
+        "BackendRunner уже запущен на http://localhost:5050. Остановите предыдущий экземпляр и запустите снова."
+    );
+}

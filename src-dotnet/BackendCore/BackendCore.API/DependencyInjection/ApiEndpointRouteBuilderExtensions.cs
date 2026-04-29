@@ -13,6 +13,7 @@ public static class ApiEndpointRouteBuilderExtensions
         TeacherEndpoints.Map(app);
         ScheduleEndpoints.Map(app);
         GradeEndpoints.Map(app);
+        AdminSqlEndpoints.Map(app);
         return app;
     }
 }

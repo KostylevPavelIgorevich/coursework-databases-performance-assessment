@@ -190,6 +190,50 @@ tbody tr.locator {
   font-weight: 600;
 }
 
+.sql-console {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sql-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 12.5px;
+  background: #fff;
+}
+
+.sql-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sql-result h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.sql-pre {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12.5px;
+}
+
 .suggest-backdrop {
   position: fixed;
   inset: 0;
