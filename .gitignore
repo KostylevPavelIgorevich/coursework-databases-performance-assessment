@@ -32,6 +32,7 @@ src-tauri/gen/schemas/
 # .NET build artifacts
 src-dotnet/**/bin/
 src-dotnet/**/obj/
+src-dotnet/BackendRunner/data/
 *.user
 *.rsuser
 *.sln.docstates

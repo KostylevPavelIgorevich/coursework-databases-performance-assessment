@@ -14,7 +14,7 @@ public static class InfrastructureServiceCollectionExtensions
         string connectionString
     )
     {
-        services.AddDbContext<SchoolDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<SchoolDbContext>(options => options.UseSqlite(connectionString));
 
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<IStudentStatusRepository, StudentStatusRepository>();

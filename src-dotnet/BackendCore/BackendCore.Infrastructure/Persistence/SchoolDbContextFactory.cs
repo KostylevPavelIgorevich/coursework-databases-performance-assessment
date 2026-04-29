@@ -11,9 +11,9 @@ public class SchoolDbContextFactory : IDesignTimeDbContextFactory<SchoolDbContex
 
         var connectionString =
             Environment.GetEnvironmentVariable("ConnectionStrings__SchoolDb")
-            ?? "Host=localhost;Port=5432;Database=school_db;Username=postgres;Password=postgres";
+            ?? "Data Source=../BackendRunner/data/school.db";
 
-        optionsBuilder.UseNpgsql(connectionString);
+        optionsBuilder.UseSqlite(connectionString);
         return new SchoolDbContext(optionsBuilder.Options);
     }
 }

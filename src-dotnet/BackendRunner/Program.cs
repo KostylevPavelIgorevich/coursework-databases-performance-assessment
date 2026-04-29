@@ -12,6 +12,20 @@ if (string.IsNullOrWhiteSpace(connectionString))
     );
 }
 
+if (connectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+{
+    var rawPath = connectionString["Data Source=".Length..].Trim();
+    var dbPath = Path.IsPathRooted(rawPath)
+        ? rawPath
+        : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, rawPath));
+    var dbDir = Path.GetDirectoryName(dbPath);
+    if (!string.IsNullOrWhiteSpace(dbDir))
+    {
+        Directory.CreateDirectory(dbDir);
+    }
+    connectionString = $"Data Source={dbPath}";
+}
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddCors(options =>

@@ -13,7 +13,7 @@ public static class SchoolDbInitializer
         CancellationToken cancellationToken = default
     )
     {
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
 
         if (await dbContext.Students.AnyAsync(cancellationToken))
         {
@@ -28,7 +28,7 @@ public static class SchoolDbInitializer
         CancellationToken cancellationToken = default
     )
     {
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        await dbContext.Database.EnsureCreatedAsync(cancellationToken);
 
         dbContext.Grades.RemoveRange(dbContext.Grades);
         dbContext.Lessons.RemoveRange(dbContext.Lessons);
