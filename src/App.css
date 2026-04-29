@@ -189,3 +189,40 @@ tbody tr.locator {
   fill: #1e3a8a;
   font-weight: 600;
 }
+
+.suggest-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.suggest-dialog {
+  width: min(520px, calc(100vw - 24px));
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  padding: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.suggest-dialog h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.suggest-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.suggest-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}

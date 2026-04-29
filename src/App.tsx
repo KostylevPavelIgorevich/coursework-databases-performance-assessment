@@ -40,6 +40,81 @@ const WINDOW_TITLES: Record<WindowKey, string> = {
   grades: "Оценки",
 };
 
+function inputWithSuggestions(
+  title: string,
+  initialValue = "",
+  suggestions: string[] = [],
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement("div");
+    backdrop.className = "suggest-backdrop";
+
+    const dialog = document.createElement("div");
+    dialog.className = "suggest-dialog";
+
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = initialValue;
+    input.className = "suggest-input";
+    const listId = `suggest-list-${Math.random().toString(36).slice(2)}`;
+    input.setAttribute("list", listId);
+
+    const datalist = document.createElement("datalist");
+    datalist.id = listId;
+    [...new Set(suggestions)].forEach((s) => {
+      const option = document.createElement("option");
+      option.value = s;
+      datalist.appendChild(option);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "suggest-actions";
+
+    const okBtn = document.createElement("button");
+    okBtn.textContent = "OK";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Отмена";
+
+    const cleanup = () => {
+      document.removeEventListener("keydown", onKeyDown);
+      backdrop.remove();
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    const onOk = () => {
+      const value = input.value.trim();
+      cleanup();
+      resolve(value.length ? value : null);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+      if (e.key === "Enter") onOk();
+    };
+
+    okBtn.onclick = onOk;
+    cancelBtn.onclick = onCancel;
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) onCancel();
+    };
+
+    actions.append(okBtn, cancelBtn);
+    dialog.append(heading, input, datalist, actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+    input.focus();
+    input.select();
+    document.addEventListener("keydown", onKeyDown);
+  });
+}
+
 function App() {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -308,7 +383,11 @@ function App() {
       return;
     }
 
-    const fullName = prompt("Введите Фамилия Имя Отчество:", "Иванов Иван Иванович");
+    const fullName = await inputWithSuggestions(
+      "Введите Фамилия Имя Отчество:",
+      "Иванов Иван Иванович",
+      students.map((s) => `${s.lastName} ${s.firstName} ${s.middleName}`),
+    );
     if (!fullName) return;
     const parts = fullName.trim().split(/\s+/);
     if (parts.length < 3) {
@@ -316,7 +395,11 @@ function App() {
       return;
     }
     const [lastName, firstName, ...middle] = parts;
-    const classTitle = prompt("Введите класс (например, 8А):", classes[0]?.title ?? "8А");
+    const classTitle = await inputWithSuggestions(
+      "Введите класс (например, 8А):",
+      classes[0]?.title ?? "8А",
+      classes.map((c) => c.title),
+    );
     if (!classTitle) return;
     const classId = classes.find((c) => c.title.toUpperCase() === classTitle.trim().toUpperCase())?.id;
     if (!classId) {
@@ -372,9 +455,10 @@ function App() {
     const selected = sortedAndFilteredStudents[studentsIndex];
     if (!selected) return;
 
-    const fullName = prompt(
+    const fullName = await inputWithSuggestions(
       "Введите Фамилия Имя Отчество через пробел:",
       `${selected.lastName} ${selected.firstName} ${selected.middleName}`,
+      students.map((s) => `${s.lastName} ${s.firstName} ${s.middleName}`),
     );
     if (!fullName) return;
     const parts = fullName.trim().split(/\s+/);
@@ -408,7 +492,11 @@ function App() {
   }
 
   async function createClass() {
-    const title = prompt("Введите название класса (например, 8А):", "8А");
+    const title = await inputWithSuggestions(
+      "Введите название класса (например, 8А):",
+      "8А",
+      classes.map((c) => c.title),
+    );
     if (!title) return;
     try {
       const response = await fetch(`${apiBase}/api/classes`, {
@@ -447,7 +535,11 @@ function App() {
   async function editSelectedClass() {
     const selected = filteredClasses[classesIndex];
     if (!selected) return;
-    const title = prompt("Введите новое название класса (например, 8А):", selected.title);
+    const title = await inputWithSuggestions(
+      "Введите новое название класса (например, 8А):",
+      selected.title,
+      classes.map((c) => c.title),
+    );
     if (!title) return;
     const nextTitle = title.trim();
     if (!nextTitle) return;
@@ -469,7 +561,11 @@ function App() {
   }
 
   async function createSubject() {
-    const name = prompt("Введите название предмета:", "Математика");
+    const name = await inputWithSuggestions(
+      "Введите название предмета:",
+      "Математика",
+      subjects.map((s) => s.name),
+    );
     if (!name) return;
     try {
       const response = await fetch(`${apiBase}/api/subjects`, {
@@ -508,7 +604,11 @@ function App() {
   async function editSelectedSubject() {
     const selected = filteredSubjects[subjectsIndex];
     if (!selected) return;
-    const name = prompt("Введите новое название предмета:", selected.name);
+    const name = await inputWithSuggestions(
+      "Введите новое название предмета:",
+      selected.name,
+      subjects.map((s) => s.name),
+    );
     if (!name) return;
     const nextName = name.trim();
     if (!nextName) return;
@@ -530,7 +630,11 @@ function App() {
   }
 
   async function createTeacher() {
-    const fullName = prompt("Введите Фамилия Имя Отчество учителя:", "Иванова Мария Петровна");
+    const fullName = await inputWithSuggestions(
+      "Введите Фамилия Имя Отчество учителя:",
+      "Иванова Мария Петровна",
+      teachers.map((t) => t.fullName),
+    );
     if (!fullName) return;
     const parts = fullName.trim().split(/\s+/);
     if (parts.length < 3) {
@@ -579,7 +683,11 @@ function App() {
   async function editSelectedTeacher() {
     const selected = filteredTeachers[teachersIndex];
     if (!selected) return;
-    const fullName = prompt("Введите Фамилия Имя Отчество:", selected.fullName);
+    const fullName = await inputWithSuggestions(
+      "Введите Фамилия Имя Отчество:",
+      selected.fullName,
+      teachers.map((t) => t.fullName),
+    );
     if (!fullName) return;
     const parts = fullName.trim().split(/\s+/);
     if (parts.length < 3) {
@@ -609,14 +717,22 @@ function App() {
       setStatusMessage("Для добавления расписания нужны классы, предметы и учителя.");
       return;
     }
-    const classTitle = prompt("Класс (например, 8А):", classes[0]?.title ?? "8А");
+    const classTitle = await inputWithSuggestions(
+      "Класс (например, 8А):",
+      classes[0]?.title ?? "8А",
+      classes.map((c) => c.title),
+    );
     if (!classTitle) return;
     const classId = classes.find((c) => c.title.toUpperCase() === classTitle.trim().toUpperCase())?.id;
     if (!classId) {
       setStatusMessage("Класс не найден.");
       return;
     }
-    const day = prompt("День недели (Понедельник..Пятница):", "Понедельник");
+    const day = await inputWithSuggestions(
+      "День недели (Понедельник..Пятница):",
+      "Понедельник",
+      ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница"],
+    );
     if (!day) return;
     const lessonNumberRaw = prompt("Номер урока (1-10):", "1");
     if (!lessonNumberRaw) return;
@@ -625,14 +741,22 @@ function App() {
       setStatusMessage("Номер урока должен быть целым числом от 1 до 10.");
       return;
     }
-    const subjectName = prompt("Предмет:", subjects[0]?.name ?? "Математика");
+    const subjectName = await inputWithSuggestions(
+      "Предмет:",
+      subjects[0]?.name ?? "Математика",
+      subjects.map((s) => s.name),
+    );
     if (!subjectName) return;
     const subjectId = subjects.find((s) => s.name.toLowerCase() === subjectName.trim().toLowerCase())?.id;
     if (!subjectId) {
       setStatusMessage("Предмет не найден.");
       return;
     }
-    const teacherFullName = prompt("ФИО учителя:", teachers[0]?.fullName ?? "");
+    const teacherFullName = await inputWithSuggestions(
+      "ФИО учителя:",
+      teachers[0]?.fullName ?? "",
+      teachers.map((t) => t.fullName),
+    );
     if (!teacherFullName) return;
     const teacherId = teachers.find((t) => t.fullName.toLowerCase() === teacherFullName.trim().toLowerCase())?.id;
     if (!teacherId) {
@@ -717,7 +841,11 @@ function App() {
       setStatusMessage("Для добавления оценки нужны ученики и предметы.");
       return;
     }
-    const studentFullName = prompt("ФИО ученика:", studentNameById(students[0]?.id ?? 0));
+    const studentFullName = await inputWithSuggestions(
+      "ФИО ученика:",
+      studentNameById(students[0]?.id ?? 0),
+      students.map((s) => `${s.lastName} ${s.firstName} ${s.middleName}`),
+    );
     if (!studentFullName) return;
     const student = students.find(
       (s) =>
@@ -728,7 +856,11 @@ function App() {
       setStatusMessage("Ученик не найден.");
       return;
     }
-    const subjectName = prompt("Предмет:", subjects[0]?.name ?? "Математика");
+    const subjectName = await inputWithSuggestions(
+      "Предмет:",
+      subjects[0]?.name ?? "Математика",
+      subjects.map((s) => s.name),
+    );
     if (!subjectName) return;
     const subjectId = subjects.find((s) => s.name.toLowerCase() === subjectName.trim().toLowerCase())?.id;
     if (!subjectId) {
