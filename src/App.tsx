@@ -52,6 +52,11 @@ function App() {
 
   const [openWindows, setOpenWindows] = useState<WindowKey[]>(["students", "schedule"]);
   const [studentSearch, setStudentSearch] = useState("");
+  const [classSearch, setClassSearch] = useState("");
+  const [subjectSearch, setSubjectSearch] = useState("");
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [scheduleSearch, setScheduleSearch] = useState("");
+  const [gradesSearch, setGradesSearch] = useState("");
   const [studentSort, setStudentSort] = useState<"Фамилия" | "Класс">("Фамилия");
 
   const [studentsIndex, setStudentsIndex] = useState(0);
@@ -89,6 +94,70 @@ function App() {
     return sortedAndFilteredStudents.find((s) => s.lastName.toLowerCase().startsWith(val))?.id ?? null;
   }, [studentSearch, sortedAndFilteredStudents]);
 
+  const averageGradeBySubject = useMemo(() => {
+    const acc = new Map<number, { sum: number; count: number }>();
+    for (const g of grades) {
+      const cur = acc.get(g.subjectId) ?? { sum: 0, count: 0 };
+      cur.sum += g.value;
+      cur.count += 1;
+      acc.set(g.subjectId, cur);
+    }
+
+    return [...acc.entries()]
+      .map(([subjectId, { sum, count }]) => ({
+        subjectId,
+        subjectName: subjectNameById(subjectId),
+        avg: sum / count,
+      }))
+      .sort((a, b) => a.subjectName.localeCompare(b.subjectName, "ru"));
+  }, [grades, subjects]);
+
+  const filteredClasses = useMemo(() => {
+    const q = classSearch.trim().toLowerCase();
+    if (!q) return classes;
+    return classes.filter((x) => x.title.toLowerCase().includes(q));
+  }, [classes, classSearch]);
+
+  const filteredSubjects = useMemo(() => {
+    const q = subjectSearch.trim().toLowerCase();
+    if (!q) return subjects;
+    return subjects.filter((x) => x.name.toLowerCase().includes(q));
+  }, [subjects, subjectSearch]);
+
+  const filteredTeachers = useMemo(() => {
+    const q = teacherSearch.trim().toLowerCase();
+    if (!q) return teachers;
+    return teachers.filter((x) => x.fullName.toLowerCase().includes(q));
+  }, [teachers, teacherSearch]);
+
+  const filteredSchedule = useMemo(() => {
+    const q = scheduleSearch.trim().toLowerCase();
+    if (!q) return schedule;
+    return schedule.filter((s) =>
+      [
+        classNameById(s.classId),
+        dayToUi[s.day] ?? s.day,
+        String(s.lessonNumber),
+        subjectNameById(s.subjectId),
+        teacherNameById(s.teacherId),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [schedule, scheduleSearch, classes, subjects, teachers]);
+
+  const filteredGrades = useMemo(() => {
+    const q = gradesSearch.trim().toLowerCase();
+    if (!q) return grades;
+    return grades.filter((g) =>
+      [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, String(g.value)]
+        .join(" ")
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [grades, gradesSearch, students, subjects]);
+
   const toggleWindow = (key: WindowKey) => {
     setOpenWindows((prev) =>
       prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key],
@@ -102,6 +171,69 @@ function App() {
     if (mode === "prev") return Math.max(current - 1, 0);
     return Math.min(current + 1, size - 1);
   };
+
+  async function exportAllTablesToExcel() {
+    const safe = (v: string | number) =>
+      String(v)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const makeTable = (title: string, headers: string[], rows: (string | number)[][]) => `
+      <h2>${safe(title)}</h2>
+      <table border="1" cellspacing="0" cellpadding="4">
+        <thead><tr>${headers.map((h) => `<th>${safe(h)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${safe(c)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+      <br/>
+    `;
+
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8" /></head>
+      <body>
+        ${makeTable("Ученики", ["Фамилия", "Имя", "Отчество", "Класс"], students.map((s) => [s.lastName, s.firstName, s.middleName, classNameById(s.classId)]))}
+        ${makeTable("Классы", ["Название"], classes.map((x) => [x.title]))}
+        ${makeTable("Предметы", ["Название"], subjects.map((x) => [x.name]))}
+        ${makeTable("Учителя", ["ФИО"], teachers.map((x) => [x.fullName]))}
+        ${makeTable("Расписание", ["Класс", "День", "Урок", "Предмет", "Учитель"], schedule.map((s) => [classNameById(s.classId), dayToUi[s.day] ?? s.day, s.lessonNumber, subjectNameById(s.subjectId), teacherNameById(s.teacherId)]))}
+        ${makeTable("Журнал оценок", ["Ученик", "Предмет", "Дата", "Оценка"], grades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, g.value]))}
+      </body>
+      </html>`;
+
+    const filename = `school_tables_${new Date().toISOString().slice(0, 10)}.xls`;
+    const blob = new Blob([`\uFEFF${html}`], { type: "application/vnd.ms-excel;charset=utf-8;" });
+
+    try {
+      if ("showSaveFilePicker" in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: filename,
+          types: [
+            {
+              description: "Excel file",
+              accept: { "application/vnd.ms-excel": [".xls"] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setStatusMessage("Файл Excel сохранён.");
+        return;
+      }
+    } catch {
+      // Пользователь закрыл диалог или API недоступно — используем обычную загрузку ниже.
+    }
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatusMessage("Экспорт в Excel выполнен.");
+  }
 
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5050";
   const pageWindows: Record<PageKey, WindowKey[]> = {
@@ -296,7 +428,7 @@ function App() {
   }
 
   async function deleteSelectedClass() {
-    const selected = classes[classesIndex];
+    const selected = filteredClasses[classesIndex];
     if (!selected) return;
     try {
       const response = await fetch(`${apiBase}/api/classes/${selected.id}`, { method: "DELETE" });
@@ -313,7 +445,7 @@ function App() {
   }
 
   async function editSelectedClass() {
-    const selected = classes[classesIndex];
+    const selected = filteredClasses[classesIndex];
     if (!selected) return;
     const title = prompt("Введите новое название класса (например, 8А):", selected.title);
     if (!title) return;
@@ -357,7 +489,7 @@ function App() {
   }
 
   async function deleteSelectedSubject() {
-    const selected = subjects[subjectsIndex];
+    const selected = filteredSubjects[subjectsIndex];
     if (!selected) return;
     try {
       const response = await fetch(`${apiBase}/api/subjects/${selected.id}`, { method: "DELETE" });
@@ -374,7 +506,7 @@ function App() {
   }
 
   async function editSelectedSubject() {
-    const selected = subjects[subjectsIndex];
+    const selected = filteredSubjects[subjectsIndex];
     if (!selected) return;
     const name = prompt("Введите новое название предмета:", selected.name);
     if (!name) return;
@@ -428,7 +560,7 @@ function App() {
   }
 
   async function deleteSelectedTeacher() {
-    const selected = teachers[teachersIndex];
+    const selected = filteredTeachers[teachersIndex];
     if (!selected) return;
     try {
       const response = await fetch(`${apiBase}/api/teachers/${selected.id}`, { method: "DELETE" });
@@ -445,7 +577,7 @@ function App() {
   }
 
   async function editSelectedTeacher() {
-    const selected = teachers[teachersIndex];
+    const selected = filteredTeachers[teachersIndex];
     if (!selected) return;
     const fullName = prompt("Введите Фамилия Имя Отчество:", selected.fullName);
     if (!fullName) return;
@@ -531,7 +663,7 @@ function App() {
   }
 
   async function deleteSelectedScheduleItem() {
-    const selected = schedule[scheduleIndex];
+    const selected = filteredSchedule[scheduleIndex];
     if (!selected) return;
     try {
       const response = await fetch(`${apiBase}/api/schedule/${selected.id}`, { method: "DELETE" });
@@ -548,7 +680,7 @@ function App() {
   }
 
   async function editSelectedScheduleItem() {
-    const selected = schedule[scheduleIndex];
+    const selected = filteredSchedule[scheduleIndex];
     if (!selected) return;
     const lessonNumber = prompt("Введите номер урока (1-10):", String(selected.lessonNumber));
     if (!lessonNumber) return;
@@ -635,7 +767,7 @@ function App() {
   }
 
   async function deleteSelectedGradeItem() {
-    const selected = grades[gradesIndex];
+    const selected = filteredGrades[gradesIndex];
     if (!selected) return;
     try {
       const response = await fetch(`${apiBase}/api/grades/${selected.id}`, { method: "DELETE" });
@@ -652,7 +784,7 @@ function App() {
   }
 
   async function editSelectedGradeItem() {
-    const selected = grades[gradesIndex];
+    const selected = filteredGrades[gradesIndex];
     if (!selected) return;
     const value = prompt("Введите новую оценку (1-5):", String(selected.value));
     if (!value) return;
@@ -682,9 +814,6 @@ function App() {
     <main className="app">
       <header className="header">
         <h1>Школа (Успеваемость)</h1>
-        <p className="subtitle">
-          Многооконный интерфейс для проверки требований: CRUD, поиск, сортировка, навигация, lookup-поля.
-        </p>
         <p className="status">{statusMessage}</p>
         <button onClick={reseedDefaultData}>Восстановить базовый сидинг</button>
       </header>
@@ -711,6 +840,47 @@ function App() {
             {WINDOW_TITLES[key]}
           </label>
         ))}
+      </section>
+
+      <section className="top-actions">
+        <button onClick={exportAllTablesToExcel}>Печать в Excel: все таблицы</button>
+      </section>
+
+      <section className="chart-panel">
+        <h2>График: средний балл по предметам</h2>
+        {averageGradeBySubject.length === 0 ? (
+          <p className="chart-empty">Нет данных для построения графика.</p>
+        ) : (
+          <svg className="line-chart" viewBox="0 0 860 220" role="img" aria-label="График средних оценок по предметам">
+            <line x1="30" y1="190" x2="840" y2="190" className="line-chart-axis" />
+            <line x1="30" y1="20" x2="30" y2="190" className="line-chart-axis" />
+            <polyline
+              className="line-chart-polyline"
+              points={averageGradeBySubject
+                .map((item, i) => {
+                  const x = 30 + (i * (810 / Math.max(1, averageGradeBySubject.length - 1)));
+                  const y = 190 - (item.avg / 5) * 170;
+                  return `${x},${y}`;
+                })
+                .join(" ")}
+            />
+            {averageGradeBySubject.map((item, i) => {
+              const x = 30 + (i * (810 / Math.max(1, averageGradeBySubject.length - 1)));
+              const y = 190 - (item.avg / 5) * 170;
+              return (
+                <g key={item.subjectId}>
+                  <circle cx={x} cy={y} r="4" className="line-chart-point" />
+                  <text x={x} y={208} className="line-chart-label" textAnchor="middle">
+                    {item.subjectName.length > 12 ? `${item.subjectName.slice(0, 12)}…` : item.subjectName}
+                  </text>
+                  <text x={x} y={y - 8} className="line-chart-value" textAnchor="middle">
+                    {item.avg.toFixed(2)}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        )}
       </section>
 
       <section className="windows-grid">
@@ -783,9 +953,12 @@ function App() {
           <SimpleWindow
             title="Форма: Классы"
             headers={["Название"]}
-            rows={classes.map((c) => [c.title])}
+            rows={filteredClasses.map((c) => [c.title])}
             index={classesIndex}
             setIndex={setClassesIndex}
+            searchTerm={classSearch}
+            setSearchTerm={setClassSearch}
+            searchPlaceholder="Поиск по классам..."
             onAdd={createClass}
             onEdit={editSelectedClass}
             onDelete={deleteSelectedClass}
@@ -796,9 +969,12 @@ function App() {
           <SimpleWindow
             title="Форма: Предметы"
             headers={["Название"]}
-            rows={subjects.map((s) => [s.name])}
+            rows={filteredSubjects.map((s) => [s.name])}
             index={subjectsIndex}
             setIndex={setSubjectsIndex}
+            searchTerm={subjectSearch}
+            setSearchTerm={setSubjectSearch}
+            searchPlaceholder="Поиск по предметам..."
             onAdd={createSubject}
             onEdit={editSelectedSubject}
             onDelete={deleteSelectedSubject}
@@ -809,9 +985,12 @@ function App() {
           <SimpleWindow
             title="Форма: Учителя"
             headers={["ФИО"]}
-            rows={teachers.map((t) => [t.fullName])}
+            rows={filteredTeachers.map((t) => [t.fullName])}
             index={teachersIndex}
             setIndex={setTeachersIndex}
+            searchTerm={teacherSearch}
+            setSearchTerm={setTeacherSearch}
+            searchPlaceholder="Поиск по учителям..."
             onAdd={createTeacher}
             onEdit={editSelectedTeacher}
             onDelete={deleteSelectedTeacher}
@@ -822,7 +1001,7 @@ function App() {
           <SimpleWindow
             title="Форма: Расписание"
             headers={["Класс", "День", "Урок", "Предмет", "Учитель"]}
-            rows={schedule.map((s) => [
+            rows={filteredSchedule.map((s) => [
               classNameById(s.classId),
               dayToUi[s.day] ?? s.day,
               String(s.lessonNumber),
@@ -831,6 +1010,9 @@ function App() {
             ])}
             index={scheduleIndex}
             setIndex={setScheduleIndex}
+            searchTerm={scheduleSearch}
+            setSearchTerm={setScheduleSearch}
+            searchPlaceholder="Поиск по расписанию..."
             onAdd={createScheduleItem}
             onEdit={editSelectedScheduleItem}
             onDelete={deleteSelectedScheduleItem}
@@ -841,9 +1023,12 @@ function App() {
           <SimpleWindow
             title="Форма: Журнал оценок"
             headers={["Ученик", "Предмет", "Дата", "Оценка"]}
-            rows={grades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, String(g.value)])}
+            rows={filteredGrades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, String(g.value)])}
             index={gradesIndex}
             setIndex={setGradesIndex}
+            searchTerm={gradesSearch}
+            setSearchTerm={setGradesSearch}
+            searchPlaceholder="Поиск по оценкам..."
             onAdd={createGradeItem}
             onDelete={deleteSelectedGradeItem}
             onEdit={editSelectedGradeItem}
@@ -860,12 +1045,27 @@ type SimpleWindowProps = {
   rows: string[][];
   index: number;
   setIndex: React.Dispatch<React.SetStateAction<number>>;
+  searchTerm: string;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+  searchPlaceholder: string;
   onAdd: () => void;
   onDelete: () => void;
   onEdit?: () => void;
 };
 
-function SimpleWindow({ title, headers, rows, index, setIndex, onAdd, onDelete, onEdit }: SimpleWindowProps) {
+function SimpleWindow({
+  title,
+  headers,
+  rows,
+  index,
+  setIndex,
+  searchTerm,
+  setSearchTerm,
+  searchPlaceholder,
+  onAdd,
+  onDelete,
+  onEdit,
+}: SimpleWindowProps) {
   const moveIndex = (current: number, size: number, mode: "first" | "prev" | "next" | "last") => {
     if (size === 0) return 0;
     if (mode === "first") return 0;
@@ -878,6 +1078,11 @@ function SimpleWindow({ title, headers, rows, index, setIndex, onAdd, onDelete, 
     <article className="window">
       <h2>{title}</h2>
       <div className="tools">
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.currentTarget.value)}
+          placeholder={searchPlaceholder}
+        />
         <button onClick={onAdd}>Добавить</button>
         {onEdit ? <button onClick={onEdit}>Изменить</button> : null}
         <button onClick={onDelete}>Удалить</button>

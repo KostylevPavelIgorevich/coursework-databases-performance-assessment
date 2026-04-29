@@ -58,6 +58,10 @@ body {
   border: 1px solid #e5e7eb;
 }
 
+.top-actions {
+  margin-bottom: 12px;
+}
+
 .windows-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(620px, 1fr));
@@ -133,4 +137,55 @@ tbody tr.selected {
 
 tbody tr.locator {
   outline: 2px solid #f59e0b;
+}
+
+.chart-panel {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.chart-panel h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.chart-empty {
+  margin: 0;
+  color: #6b7280;
+}
+
+.line-chart {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.line-chart-axis {
+  stroke: #9ca3af;
+  stroke-width: 1;
+}
+
+.line-chart-polyline {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2;
+}
+
+.line-chart-point {
+  fill: #1d4ed8;
+}
+
+.line-chart-label {
+  font-size: 10px;
+  fill: #374151;
+}
+
+.line-chart-value {
+  font-size: 10px;
+  fill: #1e3a8a;
+  font-weight: 600;
 }
