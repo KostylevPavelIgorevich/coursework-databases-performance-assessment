@@ -33,6 +33,11 @@ public static class DataEndpoints
             })
             .ToListAsync(ct);
 
+        var gradeTypes = await db
+            .GradeTypes.OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name })
+            .ToListAsync(ct);
+
         var students = await db
             .Students.OrderBy(x => x.LastName)
             .Select(x => new
@@ -55,7 +60,7 @@ public static class DataEndpoints
             .Select(x => new
             {
                 x.Id,
-                x.SchoolClassId,
+                ClassId = x.SchoolClassId,
                 Day = x.DayOfWeek.ToString(),
                 x.LessonNumber,
                 SubjectId = db
@@ -75,6 +80,7 @@ public static class DataEndpoints
             {
                 x.Id,
                 x.StudentId,
+                x.GradeTypeId,
                 SubjectId = db
                     .Lessons.Where(l => l.Id == x.LessonId)
                     .Join(
@@ -99,6 +105,7 @@ public static class DataEndpoints
                 classes,
                 subjects,
                 teachers,
+                gradeTypes,
                 students,
                 schedule,
                 grades,

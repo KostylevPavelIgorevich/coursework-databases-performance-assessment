@@ -55,6 +55,16 @@ public class Grade : Entity
         Value = value;
     }
 
+    public void ChangeGradeType(int gradeTypeId)
+    {
+        if (gradeTypeId <= 0)
+        {
+            throw new ArgumentException("Тип оценки обязателен.", nameof(gradeTypeId));
+        }
+
+        GradeTypeId = gradeTypeId;
+    }
+
     public void ChangeComment(string? comment)
     {
         Comment = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();

@@ -152,6 +152,11 @@ tbody tr.locator {
   font-size: 18px;
 }
 
+.chart-panel h3 {
+  margin: 14px 0 8px;
+  font-size: 15px;
+}
+
 .chart-empty {
   margin: 0;
   color: #6b7280;
@@ -188,6 +193,77 @@ tbody tr.locator {
   font-size: 10px;
   fill: #1e3a8a;
   font-weight: 600;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  min-height: 220px;
+  padding: 8px 4px;
+  overflow-x: auto;
+}
+
+.bar-item {
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bar-fill {
+  width: 44px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+}
+
+.bar-label {
+  font-size: 12px;
+  text-align: center;
+  color: #374151;
+}
+
+.bar-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.grade-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grade-distribution-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+}
+
+.grade-distribution-mark {
+  font-size: 12px;
+  color: #374151;
+}
+
+.grade-distribution-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.grade-distribution-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+}
+
+.grade-distribution-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
 }
 
 .sql-console {

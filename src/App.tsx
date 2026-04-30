@@ -12,6 +12,7 @@ type Student = {
 type SchoolClass = { id: number; title: string };
 type Subject = { id: number; name: string };
 type Teacher = { id: number; fullName: string };
+type GradeType = { id: number; name: string };
 type Schedule = {
   id: number;
   classId: number;
@@ -24,6 +25,7 @@ type Grade = {
   id: number;
   studentId: number;
   subjectId: number;
+  gradeTypeId: number;
   date: string;
   value: number;
 };
@@ -33,6 +35,7 @@ type WindowKey =
   | "classes"
   | "subjects"
   | "teachers"
+  | "gradeTypes"
   | "schedule"
   | "grades"
   | "sqlconsole";
@@ -43,6 +46,7 @@ const WINDOW_TITLES: Record<WindowKey, string> = {
   classes: "Классы",
   subjects: "Предметы",
   teachers: "Учителя",
+  gradeTypes: "Типы оценок",
   schedule: "Расписание",
   grades: "Оценки",
   sqlconsole: "SQL консоль",
@@ -128,6 +132,7 @@ function App() {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [gradeTypes, setGradeTypes] = useState<GradeType[]>([]);
   const [schedule, setSchedule] = useState<Schedule[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
@@ -143,6 +148,7 @@ function App() {
   const [classSearch, setClassSearch] = useState("");
   const [subjectSearch, setSubjectSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
+  const [gradeTypeSearch, setGradeTypeSearch] = useState("");
   const [scheduleSearch, setScheduleSearch] = useState("");
   const [gradesSearch, setGradesSearch] = useState("");
   const [sqlQuery, setSqlQuery] = useState("SELECT * FROM students");
@@ -153,6 +159,7 @@ function App() {
   const [classesIndex, setClassesIndex] = useState(0);
   const [subjectsIndex, setSubjectsIndex] = useState(0);
   const [teachersIndex, setTeachersIndex] = useState(0);
+  const [gradeTypesIndex, setGradeTypesIndex] = useState(0);
   const [scheduleIndex, setScheduleIndex] = useState(0);
   const [gradesIndex, setGradesIndex] = useState(0);
 
@@ -163,6 +170,7 @@ function App() {
     return s ? `${s.lastName} ${s.firstName} ${s.middleName}` : "—";
   };
   const teacherNameById = (id: number) => teachers.find((x) => x.id === id)?.fullName ?? "—";
+  const gradeTypeNameById = (id: number) => gradeTypes.find((x) => x.id === id)?.name ?? "—";
   const dayToUi: Record<string, string> = {
     Monday: "Понедельник",
     Tuesday: "Вторник",
@@ -237,6 +245,34 @@ function App() {
       .sort((a, b) => a.subjectName.localeCompare(b.subjectName, "ru"));
   }, [grades, subjects]);
 
+  const averageGradeByType = useMemo(() => {
+    const acc = new Map<number, { sum: number; count: number }>();
+    for (const g of grades) {
+      const cur = acc.get(g.gradeTypeId) ?? { sum: 0, count: 0 };
+      cur.sum += g.value;
+      cur.count += 1;
+      acc.set(g.gradeTypeId, cur);
+    }
+
+    return [...acc.entries()]
+      .map(([gradeTypeId, { sum, count }]) => ({
+        gradeTypeId,
+        gradeTypeName: gradeTypeNameById(gradeTypeId),
+        avg: sum / count,
+        count,
+      }))
+      .sort((a, b) => a.gradeTypeName.localeCompare(b.gradeTypeName, "ru"));
+  }, [grades, gradeTypes]);
+
+  const gradeCountByValue = useMemo(() => {
+    const counts = [1, 2, 3, 4, 5].map((value) => ({
+      value,
+      count: grades.filter((g) => g.value === value).length,
+    }));
+    const total = counts.reduce((sum, x) => sum + x.count, 0);
+    return counts.map((x) => ({ ...x, percent: total > 0 ? (x.count / total) * 100 : 0 }));
+  }, [grades]);
+
   const filteredClasses = useMemo(() => {
     const q = classSearch.trim().toLowerCase();
     if (!q) return classes;
@@ -254,6 +290,12 @@ function App() {
     if (!q) return teachers;
     return teachers.filter((x) => x.fullName.toLowerCase().includes(q));
   }, [teachers, teacherSearch]);
+
+  const filteredGradeTypes = useMemo(() => {
+    const q = gradeTypeSearch.trim().toLowerCase();
+    if (!q) return gradeTypes;
+    return gradeTypes.filter((x) => x.name.toLowerCase().includes(q));
+  }, [gradeTypes, gradeTypeSearch]);
 
   const filteredSchedule = useMemo(() => {
     const q = scheduleSearch.trim().toLowerCase();
@@ -276,12 +318,12 @@ function App() {
     const q = gradesSearch.trim().toLowerCase();
     if (!q) return grades;
     return grades.filter((g) =>
-      [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, String(g.value)]
+      [studentNameById(g.studentId), subjectNameById(g.subjectId), gradeTypeNameById(g.gradeTypeId), g.date, String(g.value)]
         .join(" ")
         .toLowerCase()
         .includes(q),
     );
-  }, [grades, gradesSearch, students, subjects]);
+  }, [grades, gradesSearch, students, subjects, gradeTypes]);
 
   const locatorClassIndex = useMemo(() => {
     const q = classSearch.trim().toLowerCase();
@@ -319,6 +361,18 @@ function App() {
     setTeachersIndex(locatorTeacherIndex);
   }, [locatorTeacherIndex]);
 
+  const locatorGradeTypeIndex = useMemo(() => {
+    const q = gradeTypeSearch.trim().toLowerCase();
+    if (!q) return null;
+    const idx = filteredGradeTypes.findIndex((t) => t.name.toLowerCase().startsWith(q));
+    return idx >= 0 ? idx : null;
+  }, [gradeTypeSearch, filteredGradeTypes]);
+
+  useEffect(() => {
+    if (locatorGradeTypeIndex === null) return;
+    setGradeTypesIndex(locatorGradeTypeIndex);
+  }, [locatorGradeTypeIndex]);
+
   const locatorScheduleIndex = useMemo(() => {
     const q = scheduleSearch.trim().toLowerCase();
     if (!q) return null;
@@ -349,6 +403,7 @@ function App() {
       const text = [
         studentNameById(g.studentId),
         subjectNameById(g.subjectId),
+        gradeTypeNameById(g.gradeTypeId),
         g.date,
         String(g.value),
       ]
@@ -357,7 +412,7 @@ function App() {
       return text.startsWith(q);
     });
     return idx >= 0 ? idx : null;
-  }, [gradesSearch, filteredGrades, students, subjects]);
+  }, [gradesSearch, filteredGrades, students, subjects, gradeTypes]);
 
   useEffect(() => {
     if (locatorGradeIndex === null) return;
@@ -394,22 +449,104 @@ function App() {
       <br/>
     `;
 
+    const subjectChartSvg =
+      averageGradeBySubject.length === 0
+        ? `<p style="color:#6b7280;margin:0 0 16px;">Нет данных для построения графика.</p>`
+        : `<svg viewBox="0 0 860 220" width="860" height="220" role="img" aria-label="График средних оценок по предметам">
+            <line x1="30" y1="190" x2="840" y2="190" stroke="#9ca3af" stroke-width="1" />
+            <line x1="30" y1="20" x2="30" y2="190" stroke="#9ca3af" stroke-width="1" />
+            <polyline fill="none" stroke="#2563eb" stroke-width="2" points="${averageGradeBySubject
+              .map((item, i) => {
+                const x = 30 + (i * (810 / Math.max(1, averageGradeBySubject.length - 1)));
+                const y = 190 - (item.avg / 5) * 170;
+                return `${x},${y}`;
+              })
+              .join(" ")}" />
+            ${averageGradeBySubject
+              .map((item, i) => {
+                const x = 30 + (i * (810 / Math.max(1, averageGradeBySubject.length - 1)));
+                const y = 190 - (item.avg / 5) * 170;
+                const name = item.subjectName.length > 12 ? `${item.subjectName.slice(0, 12)}…` : item.subjectName;
+                return `
+                  <g>
+                    <circle cx="${x}" cy="${y}" r="4" fill="#1d4ed8" />
+                    <text x="${x}" y="208" text-anchor="middle" font-size="10" fill="#374151">${safe(name)}</text>
+                    <text x="${x}" y="${y - 8}" text-anchor="middle" font-size="10" fill="#1e3a8a" font-weight="600">${item.avg.toFixed(2)}</text>
+                  </g>
+                `;
+              })
+              .join("")}
+          </svg>`;
+
+    const typeChartSvg =
+      averageGradeByType.length === 0
+        ? `<p style="color:#6b7280;margin:0 0 16px;">Нет данных по типам оценок.</p>`
+        : `<svg viewBox="0 0 860 260" width="860" height="260" role="img" aria-label="Диаграмма средних оценок по типам работ">
+            <line x1="30" y1="200" x2="840" y2="200" stroke="#9ca3af" stroke-width="1" />
+            <line x1="30" y1="20" x2="30" y2="200" stroke="#9ca3af" stroke-width="1" />
+            ${averageGradeByType
+              .map((item, i) => {
+                const step = 810 / Math.max(1, averageGradeByType.length);
+                const barWidth = Math.max(34, step * 0.45);
+                const x = 40 + i * step;
+                const h = (item.avg / 5) * 170;
+                const y = 200 - h;
+                return `
+                  <g>
+                    <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" fill="#2563eb" />
+                    <text x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#1e3a8a" font-weight="600">${item.avg.toFixed(2)}</text>
+                    <text x="${x + barWidth / 2}" y="220" text-anchor="middle" font-size="10" fill="#374151">${safe(item.gradeTypeName)}</text>
+                    <text x="${x + barWidth / 2}" y="236" text-anchor="middle" font-size="10" fill="#6b7280">оценок: ${item.count}</text>
+                  </g>
+                `;
+              })
+              .join("")}
+          </svg>`;
+
+    const distributionSvg = `<svg viewBox="0 0 860 220" width="860" height="220" role="img" aria-label="Диаграмма распределения оценок 1-5">
+        ${gradeCountByValue
+          .map((item, i) => {
+            const y = 24 + i * 36;
+            const w = (item.percent / 100) * 640;
+            return `
+              <g>
+                <text x="30" y="${y + 12}" font-size="12" fill="#374151">Оценка ${item.value}</text>
+                <rect x="120" y="${y}" width="640" height="14" rx="7" fill="#e5e7eb" />
+                <rect x="120" y="${y}" width="${w}" height="14" rx="7" fill="#16a34a" />
+                <text x="770" y="${y + 12}" font-size="12" fill="#111827">${item.count} (${item.percent.toFixed(1)}%)</text>
+              </g>
+            `;
+          })
+          .join("")}
+      </svg>`;
+
     const html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office"
             xmlns:x="urn:schemas-microsoft-com:office:excel"
             xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8" /></head>
+      <head>
+        <meta charset="utf-8" />
+      </head>
       <body>
         ${makeTable("Ученики", ["Фамилия", "Имя", "Отчество", "Класс"], students.map((s) => [s.lastName, s.firstName, s.middleName, classNameById(s.classId)]))}
         ${makeTable("Классы", ["Название"], classes.map((x) => [x.title]))}
         ${makeTable("Предметы", ["Название"], subjects.map((x) => [x.name]))}
         ${makeTable("Учителя", ["ФИО"], teachers.map((x) => [x.fullName]))}
         ${makeTable("Расписание", ["Класс", "День", "Урок", "Предмет", "Учитель"], schedule.map((s) => [classNameById(s.classId), dayToUi[s.day] ?? s.day, s.lessonNumber, subjectNameById(s.subjectId), teacherNameById(s.teacherId)]))}
-        ${makeTable("Журнал оценок", ["Ученик", "Предмет", "Дата", "Оценка"], grades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, g.value]))}
+        ${makeTable("Журнал оценок", ["Ученик", "Предмет", "Тип оценки", "Дата", "Оценка"], grades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), gradeTypeNameById(g.gradeTypeId), g.date, g.value]))}
+        <h2>График: средний балл по предметам</h2>
+        ${subjectChartSvg}
+        <br/>
+        <h2>Диаграмма: средний балл по типам работ</h2>
+        ${typeChartSvg}
+        <br/>
+        <h2>Диаграмма: распределение оценок 1-5</h2>
+        ${distributionSvg}
+        <br/>
       </body>
       </html>`;
 
-    const filename = `school_tables_${new Date().toISOString().slice(0, 10)}.xls`;
+    const filename = `school_tables_and_charts_${new Date().toISOString().slice(0, 10)}.xls`;
     const blob = new Blob([`\uFEFF${html}`], { type: "application/vnd.ms-excel;charset=utf-8;" });
 
     try {
@@ -468,7 +605,6 @@ function App() {
       setSqlResultText(JSON.stringify(result, null, 2));
       setStatusMessage("SQL выполнен.");
 
-      // После INSERT/UPDATE/DELETE обновляем таблицы.
       const firstWord = sql.split(/\s+/)[0].toUpperCase();
       if (firstWord === "INSERT" || firstWord === "UPDATE" || firstWord === "DELETE") {
         await loadData();
@@ -486,7 +622,7 @@ function App() {
   const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:5050";
   const pageWindows: Record<PageKey, WindowKey[]> = {
     journal: ["students", "schedule", "grades"],
-    directories: ["classes", "subjects", "teachers"],
+    directories: ["classes", "subjects", "teachers", "gradeTypes"],
     sql: ["sqlconsole"],
   };
   async function loadData() {
@@ -499,9 +635,25 @@ function App() {
       setClasses(data.classes ?? []);
       setSubjects(data.subjects ?? []);
       setTeachers(data.teachers ?? []);
+      setGradeTypes(data.gradeTypes ?? []);
       setStudents(data.students ?? []);
-      setSchedule((data.schedule ?? []).map((s: any) => ({ ...s, day: dayToUi[String(s.day)] ?? String(s.day) })));
-      setGrades((data.grades ?? []).map((g: any) => ({ ...g, date: String(g.date).slice(0, 10) })));
+      setSchedule(
+        (data.schedule ?? []).map((s: any) => ({
+          id: s.id,
+          classId: s.classId ?? s.schoolClassId,
+          day: dayToUi[String(s.day)] ?? String(s.day),
+          lessonNumber: s.lessonNumber,
+          subjectId: s.subjectId,
+          teacherId: s.teacherId,
+        })),
+      );
+      setGrades(
+        (data.grades ?? []).map((g: any) => ({
+          ...g,
+          gradeTypeId: g.gradeTypeId,
+          date: String(g.date).slice(0, 10),
+        })),
+      );
       setStatusMessage("Данные загружены из backend API.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? `Ошибка подключения к backend API: ${error.message}` : "Ошибка подключения к backend API.");
@@ -986,8 +1138,8 @@ function App() {
   }
 
   async function createGradeItem() {
-    if (!students.length || !subjects.length) {
-      setStatusMessage("Для добавления оценки нужны ученики и предметы.");
+    if (!students.length || !subjects.length || !gradeTypes.length) {
+      setStatusMessage("Для добавления оценки нужны ученики, предметы и типы оценок.");
       return;
     }
     const studentFullName = await inputWithSuggestions(
@@ -1016,9 +1168,32 @@ function App() {
       setStatusMessage("Предмет не найден.");
       return;
     }
-    const date = prompt("Дата урока (YYYY-MM-DD):", "2026-02-10");
+    const gradeTypeName = await inputWithSuggestions(
+      "Тип оценки:",
+      gradeTypes[0]?.name ?? "Контрольная",
+      gradeTypes.map((t) => t.name),
+    );
+    if (!gradeTypeName) return;
+    const gradeTypeId = gradeTypes.find((t) => t.name.toLowerCase() === gradeTypeName.trim().toLowerCase())?.id;
+    if (!gradeTypeId) {
+      setStatusMessage("Тип оценки не найден.");
+      return;
+    }
+    const date = await inputWithSuggestions(
+      "Дата урока (YYYY-MM-DD):",
+      "2026-02-10",
+      [...new Set(grades.map((g) => g.date))],
+    );
     if (!date) return;
-    const valueRaw = prompt("Оценка (1-5):", "5");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setStatusMessage("Дата должна быть в формате YYYY-MM-DD.");
+      return;
+    }
+    const valueRaw = await inputWithSuggestions(
+      "Оценка (1-5):",
+      "5",
+      ["1", "2", "3", "4", "5"],
+    );
     if (!valueRaw) return;
     const value = Number(valueRaw);
     if (!Number.isInteger(value) || value < 1 || value > 5) {
@@ -1032,6 +1207,7 @@ function App() {
         body: JSON.stringify({
           studentId: student.id,
           subjectId,
+          gradeTypeId,
           date,
           value,
         }),
@@ -1067,7 +1243,22 @@ function App() {
   async function editSelectedGradeItem() {
     const selected = filteredGrades[gradesIndex];
     if (!selected) return;
-    const value = prompt("Введите новую оценку (1-5):", String(selected.value));
+    const gradeTypeName = await inputWithSuggestions(
+      "Тип оценки:",
+      gradeTypeNameById(selected.gradeTypeId),
+      gradeTypes.map((t) => t.name),
+    );
+    if (!gradeTypeName) return;
+    const gradeTypeId = gradeTypes.find((t) => t.name.toLowerCase() === gradeTypeName.trim().toLowerCase())?.id;
+    if (!gradeTypeId) {
+      setStatusMessage("Тип оценки не найден.");
+      return;
+    }
+    const value = await inputWithSuggestions(
+      "Введите новую оценку (1-5):",
+      String(selected.value),
+      ["1", "2", "3", "4", "5"],
+    );
     if (!value) return;
     const numeric = Number(value);
     if (!Number.isInteger(numeric) || numeric < 1 || numeric > 5) {
@@ -1078,7 +1269,7 @@ function App() {
       const response = await fetch(`${apiBase}/api/grades/${selected.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: numeric }),
+        body: JSON.stringify({ value: numeric, gradeTypeId }),
       });
       if (!response.ok) {
         const err = await response.json().catch(() => null);
@@ -1134,7 +1325,8 @@ function App() {
       </section>
 
       <section className="chart-panel">
-        <h2>График: средний балл по предметам</h2>
+        <h2>Диаграммы успеваемости</h2>
+        <h3>График: средний балл по предметам</h3>
         {averageGradeBySubject.length === 0 ? (
           <p className="chart-empty">Нет данных для построения графика.</p>
         ) : (
@@ -1168,6 +1360,38 @@ function App() {
             })}
           </svg>
         )}
+
+        <h3>Столбчатая диаграмма: средний балл по типам работ (контрольная, самостоятельная и т.д.)</h3>
+        {averageGradeByType.length === 0 ? (
+          <p className="chart-empty">Нет данных по типам оценок.</p>
+        ) : (
+          <div className="bar-chart">
+            {averageGradeByType.map((item) => (
+              <div key={item.gradeTypeId} className="bar-item">
+                <div
+                  className="bar-fill"
+                  style={{ height: `${Math.max(8, (item.avg / 5) * 180)}px` }}
+                  title={`Средний балл: ${item.avg.toFixed(2)} | Кол-во оценок: ${item.count}`}
+                />
+                <div className="bar-label">{item.gradeTypeName}</div>
+                <div className="bar-value">{item.avg.toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h3>Диаграмма распределения оценок (1-5)</h3>
+        <div className="grade-distribution">
+          {gradeCountByValue.map((item) => (
+            <div key={item.value} className="grade-distribution-row">
+              <span className="grade-distribution-mark">Оценка {item.value}</span>
+              <div className="grade-distribution-track">
+                <div className="grade-distribution-fill" style={{ width: `${item.percent}%` }} />
+              </div>
+              <span className="grade-distribution-count">{item.count}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="windows-grid">
@@ -1284,6 +1508,21 @@ function App() {
           />
         )}
 
+        {activePage === "directories" && openWindows.includes("gradeTypes") && (
+          <SimpleWindow
+            title="Форма: Типы оценок"
+            headers={["Название"]}
+            rows={filteredGradeTypes.map((t) => [t.name])}
+            index={gradeTypesIndex}
+            setIndex={setGradeTypesIndex}
+            searchTerm={gradeTypeSearch}
+            setSearchTerm={setGradeTypeSearch}
+            searchPlaceholder="Поиск по типам оценок..."
+            onAdd={() => setStatusMessage("Типы оценок сейчас доступны в режиме просмотра.")}
+            onDelete={() => setStatusMessage("Удаление типов оценок отключено.")}
+          />
+        )}
+
         {activePage === "sql" && openWindows.includes("sqlconsole") && (
           <article className="window">
             <h2>SQL консоль</h2>
@@ -1337,8 +1576,8 @@ function App() {
         {activePage === "journal" && openWindows.includes("grades") && (
           <SimpleWindow
             title="Форма: Журнал оценок"
-            headers={["Ученик", "Предмет", "Дата", "Оценка"]}
-            rows={filteredGrades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), g.date, String(g.value)])}
+            headers={["Ученик", "Предмет", "Тип", "Дата", "Оценка"]}
+            rows={filteredGrades.map((g) => [studentNameById(g.studentId), subjectNameById(g.subjectId), gradeTypeNameById(g.gradeTypeId), g.date, String(g.value)])}
             index={gradesIndex}
             setIndex={setGradesIndex}
             searchTerm={gradesSearch}

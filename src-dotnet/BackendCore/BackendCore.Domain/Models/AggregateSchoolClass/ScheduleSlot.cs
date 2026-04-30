@@ -59,7 +59,12 @@ public class ScheduleSlot : Entity
         ClassroomId = classroomId;
     }
 
-    public void Update(DayOfWeek dayOfWeek, int lessonNumber, int teachingAssignmentId, int classroomId)
+    public void Update(
+        DayOfWeek dayOfWeek,
+        int lessonNumber,
+        int teachingAssignmentId,
+        int classroomId
+    )
     {
         if (dayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
         {

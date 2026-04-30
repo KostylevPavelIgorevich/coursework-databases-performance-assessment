@@ -54,13 +54,13 @@ public static class GradeEndpoints
             await db.SaveChangesAsync(ct);
         }
 
-        var gradeTypeId = await db.GradeTypes.Select(x => x.Id).FirstOrDefaultAsync(ct);
-        if (gradeTypeId <= 0)
+        var gradeTypeExists = await db.GradeTypes.AnyAsync(x => x.Id == request.GradeTypeId, ct);
+        if (!gradeTypeExists)
         {
             return Results.BadRequest(new { message = "Не найден тип оценки." });
         }
 
-        var grade = new Grade(lesson.Id, request.StudentId, gradeTypeId, request.Value);
+        var grade = new Grade(lesson.Id, request.StudentId, request.GradeTypeId, request.Value);
         await db.Grades.AddAsync(grade, ct);
         await db.SaveChangesAsync(ct);
         return Results.Ok(new { id = grade.Id });
@@ -170,6 +170,19 @@ public static class GradeEndpoints
         try
         {
             grade.ChangeValue(request.Value);
+            if (request.GradeTypeId.HasValue)
+            {
+                var gradeTypeExists = await db.GradeTypes.AnyAsync(
+                    x => x.Id == request.GradeTypeId.Value,
+                    ct
+                );
+                if (!gradeTypeExists)
+                {
+                    return Results.BadRequest(new { message = "Не найден тип оценки." });
+                }
+
+                grade.ChangeGradeType(request.GradeTypeId.Value);
+            }
             grade.ChangeComment(request.Comment);
         }
         catch (ArgumentException ex)
