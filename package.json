@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev:clean-port": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"$conn = Get-NetTCPConnection -LocalPort 1420 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }; npm run tauri dev\"",
+    "tauri:dev": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Remove-Item env:NODE_OPTIONS -ErrorAction SilentlyContinue; Remove-Item env:VSCODE_INSPECTOR_OPTIONS -ErrorAction SilentlyContinue; npm run tauri -- dev\"",
+    "tauri:dev:clean-port": "powershell -ExecutionPolicy Bypass -NoProfile -Command \"$conn = Get-NetTCPConnection -LocalPort 1420 -State Listen -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force }; npm run tauri:dev\"",
     "dotnet:restore": "dotnet restore ./src-dotnet/Backend.slnx",
     "dotnet:build": "dotnet build ./src-dotnet/Backend.slnx -c Release"
   },
